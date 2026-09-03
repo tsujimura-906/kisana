@@ -133,6 +133,9 @@
 	}
 
 	.shelter-result {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 180px;
+		gap: 14px;
 		padding: 16px;
 		background: white;
 		border: 1px solid #e0e0e0;
@@ -147,6 +150,13 @@
 		margin: 3px 0;
 		color: #666;
 		font-size: 14px;
+	}
+
+	.shelter-result-photo {
+		width: 100%;
+		height: 120px;
+		border-radius: 6px;
+		object-fit: cover;
 	}
 
 	.no-results {
@@ -173,6 +183,14 @@
 			width: 100%;
 		}
 
+		.shelter-result {
+			grid-template-columns: 1fr;
+		}
+
+		.shelter-result-photo {
+			height: 210px;
+		}
+
 		.search-fields {
 			grid-template-columns: 1fr;
 		}
@@ -190,7 +208,7 @@
 			<a href="/all_shelters" class="shelter-list-button">避難所一覧</a>
 			<div class="search-actions">
 				<select id="sortOrder" class="sort-select" aria-label="並び替え">
-					<option value="name">▼ 並び替え</option>
+					<option value="name">名前順（五十音順）</option>
 					<option value="id">登録順</option>
 				</select>
 				<button type="button" id="resetButton" class="reset-button">リセット</button>
@@ -276,17 +294,23 @@ document.addEventListener('DOMContentLoaded', function() {
 								});
 				}).sort((left, right) => {
 						if (sortOrder.value === 'id') return Number(left.id) - Number(right.id);
-						return String(left.name || '').localeCompare(String(right.name || ''), 'ja');
+						const leftName = String(left.name_kana || left.name || '');
+						const rightName = String(right.name_kana || right.name || '');
+						return leftName.localeCompare(rightName, 'ja')
+							|| String(left.name || '').localeCompare(String(right.name || ''), 'ja');
 				});
 
 				hitCount.textContent = `ヒット数: ${filteredShelters.length}件`;
 				results.innerHTML = filteredShelters.map(shelter => `
 					<li class="shelter-result">
-						<h3>${escapeHtml(shelter.name || '名称未登録')}</h3>
-						<p>住所: ${escapeHtml(shelter.address || '未登録')}</p>
-						<p>電話番号: ${escapeHtml(shelter.phone || '未登録')}</p>
-						<p>収容可能人数: ${escapeHtml(shelter.capacity || '未登録')}</p>
-						<p>設備: ${escapeHtml(Array.isArray(shelter.facilities) ? shelter.facilities.join('、') : Object.keys(shelter.facilities || {}).join('、') || '未登録')}</p>
+						<div>
+							<h3>${escapeHtml(shelter.name || '名称未登録')}</h3>
+							<p>住所: ${escapeHtml(shelter.address || '未登録')}</p>
+							<p>電話番号: ${escapeHtml(shelter.phone || '未登録')}</p>
+							<p>収容可能人数: ${escapeHtml(shelter.capacity || '未登録')}</p>
+							<p>設備: ${escapeHtml(Array.isArray(shelter.facilities) ? shelter.facilities.join('、') : Object.keys(shelter.facilities || {}).join('、') || '未登録')}</p>
+						</div>
+						${shelter.photo_url ? `<img class="shelter-result-photo" src="${escapeHtml(shelter.photo_url)}" alt="${escapeHtml(shelter.name || '避難所')}の写真">` : ''}
 					</li>
 				`).join('');
 				noResults.hidden = filteredShelters.length !== 0;

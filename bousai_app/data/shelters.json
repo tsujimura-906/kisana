@@ -1,14 +1,14 @@
 [
   {
     "id": 1,
-    "name": "妃菜",
+    "name": "兵庫県立大学",
     "status": "active",
     "location": "兵庫県神戸市西区学園西町8丁目-2-1",
     "address": "兵庫県神戸市西区学園西町8丁目-2-1",
     "district": "",
     "phone": "017-000-0000",
     "damage_status": "未確認",
-    "evacuee_count": 0,
+    "evacuee_count": 112,
     "capacity": 50,
     "supported_disasters": [
       "洪水"
@@ -40,7 +40,8 @@
       "多目的トイレ"
     ],
     "lat": 40.822283,
-    "lng": 140.747203
+    "lng": 140.747203,
+    "photo_url": "/static/uploads/54d14a6d31524a06b3620cc0615c1e56.png"
   },
   {
     "id": 3,
@@ -58,5 +59,29 @@
     "facilities": [],
     "lat": 40.61361,
     "lng": 140.590293
+  },
+  {
+    "id": 4,
+    "name": "青森山田高等学校",
+    "status": "active",
+    "location": "青森県青森市青葉3丁目-13-40",
+    "address": "青森県青森市青葉3丁目-13-40",
+    "district": "",
+    "phone": "345-5666-7777",
+    "damage_status": "大きな被害",
+    "evacuee_count": 0,
+    "capacity": 400,
+    "supported_disasters": [
+      "地震",
+      "火災"
+    ],
+    "opening_status": "閉鎖",
+    "facilities": [
+      "トイレ",
+      "多目的トイレ",
+      "AED"
+    ],
+    "lat": 40.804158,
+    "lng": 140.752625
   }
 ]

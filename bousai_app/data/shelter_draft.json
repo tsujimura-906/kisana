@@ -1,18 +1,1 @@
-{
-  "name": "",
-  "address": "",
-  "phone": "",
-  "district": "",
-  "capacity": "",
-  "status": "active",
-  "damage_status": "未確認",
-  "evacuee_count": "0",
-  "shelter_id": "",
-  "lat": "",
-  "lng": "",
-  "supported_disasters": [],
-  "facilities": [
-    "飲料水"
-  ],
-  "opening_status": "未開設"
-}
+{}

@@ -12,16 +12,17 @@
   .location-tools button { background: #1677c8; color: white; cursor: pointer; font-weight: 600; }
   .location-status { color: #666; font-size: 13px; }
   .results-list { display: grid; gap: 14px; padding: 0; list-style: none; }
-  .result-card { padding: 18px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; }
+    .result-card { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; padding: 18px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; }
   .result-card h3 { margin: 0 0 8px; }
-  .result-card p { margin: 5px 0; color: #555; }
+    .result-card p { margin: 5px 0; color: #555; }
+    .result-card-photo { width: 100%; height: 150px; border-radius: 6px; object-fit: cover; }
   .damage-status { color: #a50e0e; font-weight: 700; }
   .route-link { display: inline-block; margin-top: 10px; padding: 8px 12px; border-radius: 4px; background: #27ae60; color: white; text-decoration: none; font-weight: 600; }
     .admin-actions { display: flex; gap: 8px; margin-top: 10px; }
     .admin-actions a, .admin-actions button { padding: 8px 12px; border: 0; border-radius: 4px; color: white; text-decoration: none; cursor: pointer; font-weight: 600; }
     .admin-actions a { background: #667eea; }
     .admin-actions button { background: #c62828; }
-  @media (max-width: 600px) { .location-tools { align-items: stretch; flex-direction: column; } .location-tools input, .location-tools button { width: 100%; } }
+    @media (max-width: 600px) { .location-tools { align-items: stretch; flex-direction: column; } .location-tools input, .location-tools button { width: 100%; } .result-card { grid-template-columns: 1fr; } .result-card-photo { height: 210px; } }
 </style>
 
 <div class="results-container">
@@ -37,6 +38,12 @@
       <input type="number" id="longitude" step="any" min="-180" max="180" placeholder="140.740000">
     </label>
     <button type="button" id="locateButton">📍 現在地を取得</button>
+        <label for="resultSortOrder">並び替え
+            <select id="resultSortOrder">
+                <option value="name">名前順（五十音順）</option>
+                <option value="distance">現在地からの距離順</option>
+            </select>
+        </label>
     <span id="locationStatus" class="location-status">現在地は未取得です</span>
   </div>
 
@@ -46,8 +53,9 @@
   <ul id="resultsList" class="results-list">
     {% for shelter in results %}
     <li class="result-card" data-shelter='{{ shelter|tojson|forceescape }}'>
-      <h3>{{ shelter.name|default('避難所名未登録') }}</h3>
-    <p>設備: {% if shelter.facilities is mapping %}{% set available_facilities = shelter.facilities.items()|selectattr('1')|map(attribute='0')|list %}{{ available_facilities|join('、') or '未登録' }}{% else %}{{ shelter.facilities|default([])|join('、') or '未登録' }}{% endif %}</p>
+            <div>
+            <h3>{{ shelter.name|default('避難所名未登録') }}</h3>
+        <p>設備: {% if shelter.facilities is mapping %}{% set available_facilities = shelter.facilities.items()|selectattr('1')|map(attribute='0')|list %}{{ available_facilities|join('、') or '未登録' }}{% else %}{{ shelter.facilities|default([])|join('、') or '未登録' }}{% endif %}</p>
       <p>所在地: {{ shelter.location|default(shelter.address, true) or '所在地未登録' }}</p>
       {% if shelter.district %}<p>地区名: {{ shelter.district }}</p>{% endif %}
       <p class="damage-status">被害状況: {{ shelter.damage_status|default('未確認', true) }}</p>
@@ -56,6 +64,8 @@
     <p>開設状況: {{ shelter.opening_status|default('未開設', true) }}</p>
       <p class="distance" data-distance>現在地からの距離: 未計算</p>
       <a class="route-link" data-route-link href="#">徒歩ルートを確認</a>
+    </div>
+    {% if shelter.photo_url %}<img class="result-card-photo" src="{{ shelter.photo_url }}" alt="{{ shelter.name|default('避難所') }}の写真">{% endif %}
             {% if session.logged_in %}
             <div class="admin-actions">
                 <a href="/shelter_register?shelter_id={{ shelter.id }}">編集</a>
@@ -90,6 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const latitudeInput = document.getElementById('latitude');
     const longitudeInput = document.getElementById('longitude');
     const status = document.getElementById('locationStatus');
+    const sortOrder = document.getElementById('resultSortOrder');
+    const resultsList = document.getElementById('resultsList');
     let currentLayer = null;
     let currentPosition = null;
 
@@ -120,6 +132,30 @@ document.addEventListener('DOMContentLoaded', function() {
         return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
     }
 
+    function shelterDistance(item) {
+        if (!currentPosition) return Number.POSITIVE_INFINITY;
+        const latitude = Number(item.data.lat);
+        const longitude = Number(item.data.lng);
+        return validCoordinates(latitude, longitude)
+            ? distanceInMeters(currentPosition, [latitude, longitude])
+            : Number.POSITIVE_INFINITY;
+    }
+
+    function sortResults() {
+        if (!resultsList) return;
+        const sortedShelters = shelters.slice().sort((left, right) => {
+            if (sortOrder.value === 'distance') {
+                const distanceDifference = shelterDistance(left) - shelterDistance(right);
+                if (distanceDifference !== 0) return distanceDifference;
+            }
+            const leftName = String(left.data.name_kana || left.data.name || '');
+            const rightName = String(right.data.name_kana || right.data.name || '');
+            return leftName.localeCompare(rightName, 'ja')
+                || String(left.data.name || '').localeCompare(String(right.data.name || ''), 'ja');
+        });
+        sortedShelters.forEach(item => resultsList.appendChild(item.card));
+    }
+
     function updateRouteLink(card, latitude, longitude, destination) {
         const link = card.querySelector('[data-route-link]');
         const origin = currentPosition ? `${currentPosition[0]},${currentPosition[1]}` : '';
@@ -144,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '現在地からの距離: 未計算（座標未登録）';
             updateRouteLink(item.card, itemLatitude, itemLongitude, item.data.location || item.data.address || '');
         });
+        sortResults();
     }
 
     function addShelterMarker(item, latitude, longitude) {
@@ -191,6 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const longitude = Number(longitudeInput.value);
         if (validCoordinates(latitude, longitude)) updateCurrentLocation(latitude, longitude);
     });
+    sortOrder.addEventListener('change', sortResults);
+    sortResults();
 });
 </script>
 {% endblock %}
