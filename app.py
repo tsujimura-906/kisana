@@ -469,6 +469,8 @@ def shelter_register():
             return render_template('shelter_register.html', error=True, message='住所を入力してください。', form_data=form_data)
         if not phone:
             return render_template('shelter_register.html', error=True, message='電話番号を入力してください。', form_data=form_data)
+        if not supported_disasters:
+            return render_template('shelter_register.html', error=True, message='対応災害を1つ以上選択してください。', form_data=form_data)
         if not capacity or not capacity.isdigit():
             return render_template('shelter_register.html', error=True, message='収容人数は0以上の整数で入力してください。', form_data=form_data)
         if opening_status not in OPENING_STATUSES:

@@ -1,5 +1,16 @@
 [
   {
+    "id": 10,
+    "timestamp": "2026年09月03日 15:51",
+    "district": "北地区",
+    "content": "通報元: 個人 / 発生時刻: 2026-09-03T15:50 / 被害内容: 火事",
+    "reporter_type": "個人",
+    "occurred_at": "2026-09-03T15:50",
+    "damage_type": "火事",
+    "status": "未確認",
+    "photo_url": "/static/uploads/b21266977e3e4eb7a6a30482d230bc39.png"
+  },
+  {
     "id": 9,
     "timestamp": "2026年09月03日 13:14",
     "district": "東地区",
