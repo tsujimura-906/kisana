@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}通報確認 - 防災アプリ{% endblock %}
+
+{% block content %}
+<style>
+  .report-list-container { max-width: 1180px; margin: 0 auto; }
+  .report-list-container h2 { margin-bottom: 8px; }
+  .report-intro { color: #5f6368; }
+  .report-map { width: 100%; height: 360px; margin-top: 20px; border: 1px solid #dfe3e8; border-radius: 8px; overflow: hidden; }
+  .report-items { display: grid; gap: 14px; margin-top: 20px; padding: 0; list-style: none; }
+  .report-item { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; padding: 18px; border: 1px solid #dfe3e8; border-radius: 8px; background: white; }
+  .report-meta { color: #667085; font-size: 13px; }
+  .report-content { margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .report-location { margin-top: 8px; color: #145b91; }
+  .report-photo { width: 100%; height: 150px; border-radius: 6px; object-fit: cover; }
+  .report-photo-link { display: inline-block; margin-top: 8px; color: #145b91; font-weight: 600; }
+  .empty-reports { margin-top: 20px; padding: 22px; border: 1px solid #dfe3e8; border-radius: 8px; background: white; color: #5f6368; }
+  @media (max-width: 650px) {
+    .report-item { grid-template-columns: 1fr; }
+    .report-photo { height: 220px; }
+  }
+</style>
+
+<div class="report-list-container">
+  <h2>通報確認</h2>
+  <p class="report-intro">通報された内容、写真、場所を一覧で確認できます。</p>
+
+  <div id="reportMap" class="report-map"></div>
+
+  {% if reports %}
+  <ul class="report-items">
+    {% for report in reports %}
+    <li class="report-item" data-report='{{ report|tojson|forceescape }}'>
+      <div>
+        <div class="report-meta">{{ report.timestamp|default(report.created_at, true) or '日時未登録' }} | {{ report.district|default(report.area_name, true) or '市内全域' }} | {{ report.status|default('未確認', true) }}</div>
+        <div class="report-content">{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
+        {% if report.lat is defined and report.lng is defined %}<div class="report-location">場所: 緯度 {{ report.lat }} / 経度 {{ report.lng }}</div>{% else %}<div class="report-location">場所: 未選択</div>{% endif %}
+        {% if report._photo_url %}<a class="report-photo-link" href="{{ report._photo_url }}" target="_blank" rel="noopener noreferrer">添付写真を見る</a>{% endif %}
+      </div>
+      {% if report._photo_url %}<img class="report-photo" src="{{ report._photo_url }}" alt="通報の添付写真">{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="empty-reports">登録されている通報はありません。</p>
+  {% endif %}
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const defaultLocation = [40.8269, 140.7444];
+  const map = L.map('reportMap').setView(defaultLocation, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
+  const reportCards = Array.from(document.querySelectorAll('[data-report]'));
+  const locations = [];
+
+  reportCards.forEach(card => {
+    const report = JSON.parse(card.dataset.report);
+    const latitude = Number(report.lat);
+    const longitude = Number(report.lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    const location = [latitude, longitude];
+    locations.push(location);
+    L.marker(location).addTo(map).bindPopup(
+      `<strong>${String(report.content || '通報内容未登録').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]))}</strong>`
+    );
+  });
+
+  if (locations.length > 1) map.fitBounds(locations, { padding: [24, 24] });
+  else if (locations.length === 1) map.setView(locations[0], 15);
+});
+</script>
+{% endblock %}

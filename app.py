@@ -661,6 +661,20 @@ def notices():
     )
     return render_template('notices.html', notices=visible_notices)
 
+@app.route('/report_list')
+@login_required
+def report_list():
+    reports = load_json(NOTIFICATION_FILE, [])
+    reports = sorted(
+        reports,
+        key=lambda item: item.get('timestamp', item.get('created_at', '')),
+        reverse=True
+    )
+    for report_item in reports:
+        report_item['_photo_url'] = report_photo_url(report_item)
+    reports = [report_item for report_item in reports if report_item['_photo_url']]
+    return render_template('report_list.html', reports=reports)
+
 def board_context():
     selected = board_district(request.args.get('district'))
     visible_instructions = sorted(
