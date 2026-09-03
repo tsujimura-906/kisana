@@ -44,6 +44,16 @@
     white-space: nowrap;
   }
 
+  .emergency-report-button {
+    padding: 10px 16px;
+    border-radius: 5px;
+    background: #c62828;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
   .warning-alert {
     background: linear-gradient(135deg, #003d82 0%, #005ba8 100%);
     border: none;
@@ -383,6 +393,7 @@
         <p class="emergency-contact-description">青森県青森市役所</p>
       </div>
       <a class="emergency-contact-phone" href="tel:0177341111">017-734-1111</a>
+      <a class="emergency-report-button" href="/report">通報する</a>
     </div>
   </div>
 
@@ -400,11 +411,13 @@
       <a href="/safety_confirmation" class="action-card-button">登録済み</a>
     </div>
 
-    <div class="action-card card-orange">
-      <h3 class="action-card-title">📢 情報・注意事項</h3>
-      <p class="action-card-desc">最新情報と取るべき行動をチェック</p>
-      <a href="/board" class="action-card-button">確認する</a>
-    </div>
+    {% if session.logged_in %}
+      <div class="action-card card-orange">
+        <h3 class="action-card-title">📢 情報・注意事項</h3>
+        <p class="action-card-desc">最新情報と取るべき行動をチェック</p>
+        <a href="/board" class="action-card-button">確認する</a>
+      </div>
+    {% endif %}
   </div>
 
   <!-- 避難所マップセクション -->

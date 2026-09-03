@@ -46,5 +46,27 @@
     "facilities": {},
     "lat": 40.8269,
     "lng": 140.7444
+  },
+  {
+    "id": 7,
+    "name": "ああ",
+    "status": "active",
+    "location": "っf",
+    "address": "ええ",
+    "district": "が",
+    "phone": "えげっっg",
+    "damage_status": "一部被害",
+    "evacuee_count": 2,
+    "capacity": 3301,
+    "supported_disasters": [
+      "高潮"
+    ],
+    "opening_status": "開設中",
+    "facilities": [
+      "非常食"
+    ],
+    "lat": 2.0,
+    "lng": 3.0,
+    "photo_url": "/static/uploads/0d58f7331d2b4e60bed08a88f949dc84.png"
   }
 ]

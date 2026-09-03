@@ -1,10 +1,24 @@
 [
   {
+    "id": 9,
+    "timestamp": "2026年09月03日 13:14",
+    "district": "東地区",
+    "content": "通報元: 個人 / 発生時刻: 2026-09-11T13:13 / 被害内容: 火事",
+    "reporter_type": "個人",
+    "occurred_at": "2026-09-11T13:13",
+    "damage_type": "火事",
+    "status": "未確認",
+    "lat": 40.725405,
+    "lng": 140.692978,
+    "photo_url": "/static/uploads/4e9212c2c3644dce801855809688f165.png"
+  },
+  {
     "id": 8,
     "timestamp": "2026年09月03日 08:42",
     "district": "中央地区",
     "content": "青森駅東口付近で道路冠水の通報。通行時は十分注意してください。",
-    "status": "確認中"
+    "status": "確認中",
+    "photo_url": "/static/uploads/0d58f7331d2b4e60bed08a88f949dc84.png"
   },
   {
     "id": 7,

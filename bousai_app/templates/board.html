@@ -18,6 +18,12 @@
   .board-row:last-child { border-bottom: 0; }
   .board-meta { color: #667085; font-size: 12px; }
   .board-content { margin-top: 5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .damage-index { display: inline-block; margin-right: 8px; padding: 3px 7px; border-radius: 4px; font-weight: 700; }
+  .damage-index-normal { background: #e8f1f8; color: #145b91; }
+  .damage-index-warning { background: #fff0a8; color: #705500; }
+  .damage-index-danger { background: #ffd9d6; color: #a50e0e; }
+  .report-photo-link { display: inline-block; margin-top: 8px; color: #145b91; font-weight: 600; }
+  .live-campus-link { display: inline-block; margin-top: 10px; color: #145b91; font-weight: 600; }
   .board-form { margin-top: 24px; }
   .publish-form { display: grid; gap: 16px; }
   .publish-form label { font-weight: 600; }
@@ -55,6 +61,7 @@
         </li>
         {% else %}<li class="board-row">登録されている発信はありません。</li>{% endfor %}
       </ul>
+      <a class="live-campus-link" href="https://livecampus.jp/" target="_blank" rel="noopener noreferrer">避難所別の情報はこちら</a>
     </section>
 
     <section class="board-panel">
@@ -63,7 +70,8 @@
         {% for report in reports %}
         <li class="board-row">
           <div class="board-meta">{{ report.timestamp|default(report.created_at, true) or '日時未登録' }} | {{ report.district|default(report.area_name, true) or '市内全域' }} | {{ report.status|default('未確認', true) }}</div>
-          <div class="board-content">{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
+          <div class="board-content"><span class="damage-index {% if report._damage_index >= 8 %}damage-index-danger{% elif report._damage_index >= 5 %}damage-index-warning{% else %}damage-index-normal{% endif %}">被害指数: {{ '%.1f'|format(report._damage_index) }}</span>{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
+          {% if report._photo_url %}<a class="report-photo-link" href="{{ report._photo_url }}" target="_blank" rel="noopener noreferrer">📷 添付写真を見る</a>{% endif %}
         </li>
         {% else %}<li class="board-row">登録されている通報はありません。</li>{% endfor %}
       </ul>

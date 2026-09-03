@@ -18,7 +18,7 @@
     </div>
   {% endif %}
 
-  <form method="POST" action="/shelter_register" class="register-form">
+  <form method="POST" action="/shelter_register" class="register-form" enctype="multipart/form-data">
     {% if shelter %}<input type="hidden" name="shelter_id" value="{{ shelter.id }}">{% endif %}
     <div class="form-group">
       <label for="name">避難所名<span class="required">（必須）</span></label><br>
@@ -37,25 +37,21 @@
       <div id="registerMap" class="register-map"></div>
     </div>
 
-    <div class="form-group">
-      <label for="district">地区名</label><br>
-      <input type="text" id="district" name="district" value="{{ form_data.district if form_data else (shelter.district if shelter else '') }}" placeholder="例: 合浦">
-    </div>
-
-    <div class="form-group coordinate-fields">
-      <div>
-        <label for="lat">緯度</label><br>
-        <input type="number" id="lat" name="lat" value="{{ form_data.lat if form_data else (shelter.lat if shelter and shelter.lat is defined else '') }}" step="any" min="-90" max="90" placeholder="40.824000">
-      </div>
-      <div>
-        <label for="lng">経度</label><br>
-        <input type="number" id="lng" name="lng" value="{{ form_data.lng if form_data else (shelter.lng if shelter and shelter.lng is defined else '') }}" step="any" min="-180" max="180" placeholder="140.740000">
-      </div>
-    </div>
+    <input type="hidden" id="lat" name="lat" value="{{ form_data.lat if form_data else (shelter.lat if shelter and shelter.lat is defined else '') }}">
+    <input type="hidden" id="lng" name="lng" value="{{ form_data.lng if form_data else (shelter.lng if shelter and shelter.lng is defined else '') }}">
 
     <div class="form-group">
       <label for="phone">電話番号</label><br>
       <input type="tel" id="phone" name="phone" value="{{ (form_data.phone if form_data else (shelter.phone if shelter else ''))|default('', true) }}" placeholder="例: 090-1234-5678">
+    </div>
+
+    <div class="form-group">
+      <label for="photo">避難所の写真</label><br>
+      <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/gif,image/webp">
+      {% if shelter and shelter.photo_url %}
+        <p class="photo-note">登録済みの写真があります。新しい写真を選ぶと置き換わります。</p>
+        <img class="shelter-photo-preview" src="{{ shelter.photo_url }}" alt="{{ shelter.name }}の写真">
+      {% endif %}
     </div>
 
     <div class="form-group">
@@ -100,18 +96,9 @@
       </select>
     </div>
 
-    <div class="form-group">
-      <label for="status">公開状態</label><br>
-      <select id="status" name="status">
-        {% for item in [('active', '公開'), ('draft', '下書き'), ('inactive', '解除')] %}
-        <option value="{{ item[0] }}"{% if (form_data.status if form_data else (shelter.status if shelter else 'active')) == item[0] %} selected{% endif %}>{{ item[1] }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
     <div class="form-actions">
       <button type="submit" name="action" value="save" class="btn btn-primary">🚀 {% if shelter %}更新{% else %}登録{% endif %}</button>
-      <button type="submit" name="action" value="draft" class="btn btn-draft">一時保存</button>
+      <button type="submit" name="action" value="draft" class="btn btn-draft" formnovalidate>一時保存</button>
       <a href="/" class="btn btn-secondary">戻る</a>
     </div>
   </form>
@@ -182,6 +169,21 @@
       transition: border-color 0.3s ease;
     }
 
+    .photo-note {
+      margin: 6px 0;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .shelter-photo-preview {
+      display: block;
+      max-width: 280px;
+      max-height: 180px;
+      margin-top: 8px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
     .register-map {
       height: 260px;
       margin-top: 10px;
@@ -217,17 +219,6 @@
       color: white;
     }
 
-    .coordinate-fields {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    @media (max-width: 600px) {
-      .coordinate-fields {
-        grid-template-columns: 1fr;
-      }
-    }
 
     .form-actions {
       display: flex;
@@ -300,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function searchLocation() {
-    const query = (locationInput.value || addressInput.value).trim();
+    const query = (addressInput.value || locationInput.value).trim();
     if (query.length < 3) {
       status.textContent = query ? '住所を3文字以上入力してください' : '';
       return;
@@ -316,17 +307,20 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
         showPoint(coordinates.lat, coordinates.lng);
-        status.textContent = '地図に位置を表示しました';
+        status.textContent = '入力した住所を地図に表示しました';
       })
       .catch(() => {
         if (currentRequest === requestNumber) status.textContent = '住所検索に失敗しました';
       });
   }
 
-  locationInput.addEventListener('input', function() {
+  function scheduleSearch() {
     clearTimeout(timer);
     timer = setTimeout(searchLocation, 800);
-  });
+  }
+
+  locationInput.addEventListener('input', scheduleSearch);
+  addressInput.addEventListener('input', scheduleSearch);
   if (latitudeInput.value && longitudeInput.value) {
     showPoint(Number(latitudeInput.value), Number(longitudeInput.value));
   } else if (locationInput.value || addressInput.value) {
@@ -334,4 +328,5 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+
 {% endblock %}

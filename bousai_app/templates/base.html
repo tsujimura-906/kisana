@@ -25,7 +25,7 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       position: sticky;
       top: 0;
-      z-index: 100;
+      z-index: 1100;
     }
 
     header h1 {
@@ -81,8 +81,11 @@
     <nav>
       <a href="/">🏠 ホーム</a>
       <a href="/shelter_search">🏘️ 避難所検索</a>
-      <a href="/shelter_register">📝 避難所登録</a>
-      <a href="/board">📢 指示・発信ボード</a>
+      {% if session.logged_in %}
+        <a href="/shelter_register">📝 避難所登録</a>
+        <a href="/board">📢 指示・発信ボード</a>
+        <a href="/shelter_status">📊 避難所状況</a>
+      {% endif %}
       <span>｜</span>
       {% if session.logged_in %}
         <span>👤 ログイン中{% if session.username %}（{{ session.username }}）{% endif %}</span>
