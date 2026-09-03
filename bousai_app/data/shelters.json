@@ -1,21 +1,50 @@
 [
   {
     "id": 1,
-    "name": "御所見小学校"
+    "name": "御所見小学校",
+    "status": "active",
+    "location": "",
+    "district": "",
+    "damage_status": "未確認",
+    "evacuee_count": 0,
+    "capacity": 0,
+    "facilities": {}
   },
   {
     "id": 2,
-    "name": "片瀬小学校"
+    "name": "片瀬小学校",
+    "status": "active",
+    "location": "",
+    "district": "",
+    "damage_status": "未確認",
+    "evacuee_count": 0,
+    "capacity": 0,
+    "facilities": {}
   },
   {
     "id": 5,
-    "name": "鵠洋小学校"
+    "name": "鵠洋小学校",
+    "status": "active",
+    "location": "",
+    "district": "",
+    "damage_status": "未確認",
+    "evacuee_count": 0,
+    "capacity": 0,
+    "facilities": {}
   },
   {
     "id": 6,
-    "name": "1",
-    "address": "",
-    "phone": "",
-    "capacity": ""
+    "name": "青森市民体育館",
+    "status": "active",
+    "address": "青森市合浦1丁目",
+    "location": "青森市合浦1丁目",
+    "district": "合浦",
+    "phone": "017-741-8835",
+    "capacity": "500",
+    "damage_status": "未確認",
+    "evacuee_count": 0,
+    "facilities": {},
+    "lat": 40.8269,
+    "lng": 140.7444
   }
 ]

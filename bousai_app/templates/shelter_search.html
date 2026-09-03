@@ -1,8 +1,318 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>避難所検索</h2>
-<p>登録されている避難所を確認できます。</p>
+<style>
+	.shelter-search-container {
+		max-width: 1180px;
+		margin: 0 auto;
+	}
 
-<p><a href="/all_shelters">全施設一覧</a></p>
+	.shelter-map {
+		width: 100%;
+		height: 330px;
+		margin-top: 20px;
+		border: 1px solid #dfe3e8;
+		border-radius: 18px 18px 0 0;
+		overflow: hidden;
+	}
+
+	.search-panel {
+		margin-top: 0;
+		padding: 20px;
+		background: #f5f7fa;
+		border: 1px solid #dfe3e8;
+		border-radius: 0 0 18px 18px;
+	}
+
+	.search-fields {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 16px;
+		padding-bottom: 18px;
+		border-bottom: 1px solid #dfe3e8;
+	}
+
+	.search-field label {
+		display: block;
+		margin-bottom: 6px;
+		font-weight: 600;
+	}
+
+	.search-field input,
+	.sort-select {
+		width: 100%;
+		padding: 10px;
+		border: 1px solid #c8cdd3;
+		border-radius: 5px;
+		background: white;
+	}
+
+	.filter-options {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 14px;
+		margin-top: 18px;
+		padding-top: 16px;
+		border-top: 1px solid #dfe3e8;
+	}
+
+	.filter-options label {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.search-actions,
+	.result-summary {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+		margin-top: 18px;
+	}
+
+	.result-summary {
+		min-height: 48px;
+		margin-top: 0;
+		padding-bottom: 18px;
+		border-bottom: 1px solid #dfe3e8;
+	}
+
+	.search-actions {
+		margin-left: auto;
+		margin-top: 0;
+	}
+
+	.search-actions .sort-select {
+		width: 205px;
+	}
+
+	.search-button,
+	.reset-button,
+	.shelter-list-button {
+		padding: 9px 16px;
+		border: 1px solid;
+		border-radius: 5px;
+		color: white;
+		cursor: pointer;
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.search-button {
+		background: #1677c8;
+		border-color: #1677c8;
+	}
+
+	.reset-button {
+		background: #c62828;
+		border-color: #c62828;
+	}
+
+	.reset-button:hover {
+		background: #9f1f1f;
+		border-color: #9f1f1f;
+	}
+
+	.shelter-list-button {
+		background: white;
+		border-color: #b9d5ef;
+		color: #145b91;
+	}
+
+	.hit-count {
+		font-weight: 700;
+	}
+
+	.shelter-results {
+		display: grid;
+		gap: 12px;
+		margin-top: 18px;
+		padding: 0;
+		list-style: none;
+	}
+
+	.shelter-result {
+		padding: 16px;
+		background: white;
+		border: 1px solid #e0e0e0;
+		border-radius: 6px;
+	}
+
+	.shelter-result h3 {
+		margin: 0 0 6px;
+	}
+
+	.shelter-result p {
+		margin: 3px 0;
+		color: #666;
+		font-size: 14px;
+	}
+
+	.no-results {
+		margin-top: 18px;
+	}
+
+	@media (max-width: 600px) {
+		.search-actions,
+		.result-summary {
+			align-items: stretch;
+		}
+
+		.result-summary {
+			flex-direction: column;
+		}
+
+		.search-actions {
+			margin-left: 0;
+			width: 100%;
+			flex-direction: column;
+		}
+
+		.search-actions .sort-select {
+			width: 100%;
+		}
+
+		.search-fields {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
+
+<div class="shelter-search-container">
+	<h2>避難所検索</h2>
+	<p>登録されている避難所を条件で絞り込めます。</p>
+	<div id="shelterMap" class="shelter-map"></div>
+
+	<form id="shelterSearchForm" class="search-panel" onsubmit="return false;">
+		<div class="result-summary">
+			<span id="hitCount" class="hit-count"></span>
+			<a href="/all_shelters" class="shelter-list-button">避難所一覧</a>
+			<div class="search-actions">
+				<select id="sortOrder" class="sort-select" aria-label="並び替え">
+					<option value="name">▼ 並び替え</option>
+					<option value="id">登録順</option>
+				</select>
+				<button type="button" id="resetButton" class="reset-button">リセット</button>
+				<button type="button" id="searchButton" class="search-button">検索</button>
+			</div>
+		</div>
+
+		<div class="search-fields">
+			<div class="search-field">
+				<label for="shelterName">避難所名</label>
+				<input type="search" id="shelterName" placeholder="避難所名を入力">
+			</div>
+			<div class="search-field">
+				<label for="currentAddress">現在地住所</label>
+				<input type="search" id="currentAddress" placeholder="現在地住所を入力">
+			</div>
+		</div>
+
+		<div class="filter-options" aria-label="追加の絞り込み条件">
+			<label><input type="checkbox" name="filter" value="water"> 飲料水</label>
+			<label><input type="checkbox" name="filter" value="food"> 非常食</label>
+			<label><input type="checkbox" name="filter" value="wifi"> Wi-Fi</label>
+			<label><input type="checkbox" name="filter" value="aed"> AED</label>
+			<label><input type="checkbox" name="filter" value="wheelchair"> 車椅子対応</label>
+			<label><input type="checkbox" name="filter" value="language"> 言語対応</label>
+		</div>
+
+	</form>
+
+	<ul id="shelterResults" class="shelter-results"></ul>
+	<p id="noResults" class="no-results" hidden>該当する避難所が見つかりませんでした</p>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+		const defaultLocation = [40.8269, 140.7444];
+		const map = L.map('shelterMap').setView(defaultLocation, 13);
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '© OpenStreetMap contributors'
+		}).addTo(map);
+
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(function(position) {
+				map.setView([position.coords.latitude, position.coords.longitude], 15);
+			}, function() {
+				map.setView(defaultLocation, 13);
+			}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+		}
+
+		const shelters = {{ shelters|tojson }};
+		const form = document.getElementById('shelterSearchForm');
+		const nameInput = document.getElementById('shelterName');
+		const addressInput = document.getElementById('currentAddress');
+		const sortOrder = document.getElementById('sortOrder');
+		const results = document.getElementById('shelterResults');
+		const hitCount = document.getElementById('hitCount');
+		const noResults = document.getElementById('noResults');
+
+		function escapeHtml(value) {
+			return String(value || '').replace(/[&<>'"]/g, character => ({
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				"'": '&#39;',
+				'"': '&quot;'
+			})[character]);
+		}
+
+		function renderResults() {
+				const nameQuery = nameInput.value.trim().toLowerCase();
+				const addressQuery = addressInput.value.trim().toLowerCase();
+				const selectedFilters = Array.from(
+						form.querySelectorAll('input[name="filter"]:checked')
+				).map(input => input.value);
+				const filteredShelters = shelters.filter(shelter => {
+						const name = String(shelter.name || '').toLowerCase();
+						const address = String(shelter.address || '').toLowerCase();
+						return (!nameQuery || name.includes(nameQuery))
+								&& (!addressQuery || address.includes(addressQuery))
+								&& selectedFilters.every(filter => Boolean(shelter[filter]));
+				}).sort((left, right) => {
+						if (sortOrder.value === 'id') return Number(left.id) - Number(right.id);
+						return String(left.name || '').localeCompare(String(right.name || ''), 'ja');
+				});
+
+				hitCount.textContent = `ヒット数: ${filteredShelters.length}件`;
+				results.innerHTML = filteredShelters.map(shelter => `
+					<li class="shelter-result">
+						<h3>${escapeHtml(shelter.name || '名称未登録')}</h3>
+						<p>住所: ${escapeHtml(shelter.address || '未登録')}</p>
+						<p>電話番号: ${escapeHtml(shelter.phone || '未登録')}</p>
+						<p>収容可能人数: ${escapeHtml(shelter.capacity || '未登録')}</p>
+					</li>
+				`).join('');
+				noResults.hidden = filteredShelters.length !== 0;
+		}
+
+		document.getElementById('searchButton').addEventListener('click', function() {
+			const parameters = new URLSearchParams();
+			if (nameInput.value.trim()) parameters.set('name', nameInput.value.trim());
+			if (addressInput.value.trim()) parameters.set('location', addressInput.value.trim());
+			form.querySelectorAll('input[name="filter"]:checked').forEach(input => {
+				parameters.append('facility', input.value);
+			});
+			window.location.href = `/search_results?${parameters.toString()}`;
+		});
+		form.addEventListener('input', renderResults);
+		sortOrder.addEventListener('change', renderResults);
+		document.getElementById('resetButton').addEventListener('click', function() {
+				nameInput.value = '';
+				addressInput.value = '';
+				form.querySelectorAll('input[type="checkbox"]').forEach(input => {
+						input.checked = false;
+				});
+				sortOrder.value = 'name';
+				renderResults();
+		});
+
+		renderResults();
+});
+</script>
 {% endblock %}

@@ -1,43 +1,58 @@
 [
   {
-    "timestamp": "2026年06月15日 09:55",
-    "area_name": "藤沢市",
-    "report_time": "2026年05月23日 04:12",
-    "warnings": [],
-    "warning_count": 0,
-    "has_emergency": false,
-    "has_warning": false,
-    "has_advisory": false
+    "id": 8,
+    "timestamp": "2026年09月03日 08:42",
+    "district": "中央地区",
+    "content": "青森駅東口付近で道路冠水の通報。通行時は十分注意してください。",
+    "status": "確認中"
   },
   {
-    "timestamp": "2025年06月10日 19:04",
-    "area_name": "藤沢市",
-    "report_time": "2025年06月10日 16:46",
-    "warnings": [
-      {
-        "name": "雷注意報",
-        "code": "14",
-        "status": "発表"
-      },
-      {
-        "name": "強風注意報",
-        "code": "15",
-        "status": "継続"
-      }
-    ],
-    "warning_count": 2,
-    "has_emergency": false,
-    "has_warning": false,
-    "has_advisory": true
+    "id": 7,
+    "timestamp": "2026年09月03日 07:58",
+    "district": "東地区",
+    "content": "合浦公園周辺で倒木が歩道をふさいでいるとの通報。現地確認を依頼しました。",
+    "status": "対応中"
   },
   {
-    "timestamp": "2025年06月09日 11:04",
-    "area_name": "藤沢市",
-    "report_time": "2025年06月07日 16:10",
-    "warnings": [],
-    "warning_count": 0,
-    "has_emergency": false,
-    "has_warning": false,
-    "has_advisory": false
+    "id": 6,
+    "timestamp": "2026年09月03日 07:26",
+    "district": "北地区",
+    "content": "野木和公園付近で停電しているとの通報。電力会社へ連絡済みです。",
+    "status": "対応中"
+  },
+  {
+    "id": 5,
+    "timestamp": "2026年09月02日 21:15",
+    "district": "南地区",
+    "content": "大雨の影響で側溝から水があふれているとの通報。けが人はありません。",
+    "status": "対応済み"
+  },
+  {
+    "id": 4,
+    "timestamp": "2026年09月02日 18:33",
+    "district": "西地区",
+    "content": "荒川沿いで水位が上昇しているとの通報。周辺の見回りを実施しました。",
+    "status": "確認済み"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026年09月02日 16:47",
+    "district": "浪岡地区",
+    "content": "浪岡川近くの農道に土砂が流入しているとの通報。通行を控えてください。",
+    "status": "対応中"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026年09月02日 14:20",
+    "district": "中央地区",
+    "content": "市役所へ避難所の開設状況について問い合わせがありました。",
+    "status": "確認済み"
+  },
+  {
+    "id": 1,
+    "timestamp": "2026年09月02日 11:05",
+    "district": "市内全域",
+    "content": "強風で看板が外れかかっているとの通報。危険な場所に近づかないよう案内しました。",
+    "status": "対応済み"
   }
 ]

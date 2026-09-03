@@ -1,5 +1,25 @@
 [
   {
+    "id": 6,
+    "target": "職員",
+    "district": "市内全域",
+    "content": "通行止め",
+    "status": "発信中",
+    "shelter": "",
+    "created_at": "2026年09月03日 11:30",
+    "updated_at": "2026年09月03日 11:30"
+  },
+  {
+    "id": 5,
+    "target": "住民",
+    "district": "市内全域",
+    "content": "１２",
+    "status": "発信中",
+    "shelter": "",
+    "created_at": "2026年09月03日 11:29",
+    "updated_at": "2026年09月03日 11:29"
+  },
+  {
     "id": 4,
     "target": "住民",
     "content": "B避難所へ避難してください",

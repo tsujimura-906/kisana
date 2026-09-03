@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}安否確認 - 防災アプリ{% endblock %}
+
+{% block content %}
+<style>
+  .safety-container {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .safety-container h2 {
+    margin-bottom: 8px;
+  }
+
+  .safety-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .safety-member {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+  }
+
+  .safety-member-name {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .safety-member-relation {
+    margin-top: 4px;
+    color: #666;
+    font-size: 13px;
+  }
+
+  .safety-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .safety-form select,
+  .safety-form button {
+    padding: 8px 10px;
+    border: 1px solid #c8c8c8;
+    border-radius: 4px;
+    background: white;
+  }
+
+  .safety-form button {
+    background: #27ae60;
+    border-color: #27ae60;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    .safety-member {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .safety-form {
+      width: 100%;
+    }
+
+    .safety-form select,
+    .safety-form button {
+      flex: 1;
+    }
+  }
+</style>
+
+<div class="safety-container">
+  <h2>👥 家族の安否確認</h2>
+  <p>登録済みの家族の安全状況を確認・更新できます。</p>
+
+  {% if family_safety %}
+    <div class="safety-list">
+      {% for member in family_safety %}
+      <div class="safety-member">
+        <div>
+          <div class="safety-member-name">{{ member.name }}</div>
+          <div class="safety-member-relation">{{ member.relation }}</div>
+        </div>
+        <form class="safety-form" method="post">
+          <input type="hidden" name="member_id" value="{{ member.id }}">
+          <select name="status" aria-label="{{ member.name }}の安否">
+            {% for status in ['無事', '避難中', '未確認'] %}
+            <option value="{{ status }}"{% if member.status == status %} selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">更新</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>登録されている家族はいません。</p>
+  {% endif %}
+</div>
+{% endblock %}

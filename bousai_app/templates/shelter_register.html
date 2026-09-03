@@ -3,7 +3,7 @@
 {% block content %}
 <div class="register-container">
   <h2>📝 避難所登録</h2>
-  <p>新しい避難所情報を登録します。必須項目を入力して登録してください。</p>
+  <p>{% if shelter %}避難所情報を更新します。{% else %}新しい避難所情報を登録します。{% endif %}</p>
 
   <!-- 成功・エラーメッセージ表示 -->
   {% if success %}
@@ -19,35 +19,106 @@
   {% endif %}
 
   <form method="POST" action="/shelter_register" class="register-form">
+    {% if shelter %}<input type="hidden" name="shelter_id" value="{{ shelter.id }}">{% endif %}
     <div class="form-group">
       <label for="name">避難所名<span class="required">（必須）</span></label><br>
-      <input type="text" id="name" name="name" placeholder="例: 〇〇小学校">
+      <input type="text" id="name" name="name" value="{{ (form_data.name if form_data else (shelter.name if shelter else ''))|default('', true) }}" placeholder="例: 〇〇小学校">
     </div>
 
     <div class="form-group">
       <label for="address">住所</label><br>
-      <input type="text" id="address" name="address" placeholder="例: 青森市〇〇区〇〇">
+      <input type="text" id="address" name="address" value="{{ form_data.address if form_data else (shelter.address if shelter else '') }}" placeholder="例: 青森市〇〇区〇〇" required>
+    </div>
+
+    <div class="form-group">
+      <label for="location">所在地</label><br>
+      <input type="text" id="location" name="location" value="{{ form_data.location if form_data else (shelter.location if shelter else '') }}" placeholder="例: 青森県青森市合浦1丁目">
+      <p id="geocodeStatus" class="geocode-status"></p>
+      <div id="registerMap" class="register-map"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="district">地区名</label><br>
+      <input type="text" id="district" name="district" value="{{ form_data.district if form_data else (shelter.district if shelter else '') }}" placeholder="例: 合浦">
+    </div>
+
+    <div class="form-group coordinate-fields">
+      <div>
+        <label for="lat">緯度</label><br>
+        <input type="number" id="lat" name="lat" value="{{ form_data.lat if form_data else (shelter.lat if shelter and shelter.lat is defined else '') }}" step="any" min="-90" max="90" placeholder="40.824000">
+      </div>
+      <div>
+        <label for="lng">経度</label><br>
+        <input type="number" id="lng" name="lng" value="{{ form_data.lng if form_data else (shelter.lng if shelter and shelter.lng is defined else '') }}" step="any" min="-180" max="180" placeholder="140.740000">
+      </div>
     </div>
 
     <div class="form-group">
       <label for="phone">電話番号</label><br>
-      <input type="tel" id="phone" name="phone" placeholder="例: 090-1234-5678">
+      <input type="tel" id="phone" name="phone" value="{{ (form_data.phone if form_data else (shelter.phone if shelter else ''))|default('', true) }}" placeholder="例: 090-1234-5678">
+    </div>
+
+    <div class="form-group">
+      <label>対応災害</label><br>
+      {% for disaster in ['地震', '洪水', '土砂災害', '津波', '高潮', '火災'] %}
+      <label class="check-label"><input type="checkbox" name="supported_disasters" value="{{ disaster }}"{% if disaster in (form_data.supported_disasters if form_data else (shelter.supported_disasters if shelter else [])) %} checked{% endif %}> {{ disaster }}</label>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <label>施設設備</label><br>
+      {% for facility in ['トイレ', 'Wi-Fi', '飲料水', '非常食', 'AED', '多目的トイレ', '車椅子対応', '英語対応'] %}
+      <label class="check-label"><input type="checkbox" name="facilities" value="{{ facility }}"{% if facility in (form_data.facilities if form_data else (shelter.facilities if shelter else [])) %} checked{% endif %}> {{ facility }}</label>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <label for="opening_status">開設状況</label><br>
+      <select id="opening_status" name="opening_status" required>
+        {% for item in ['未開設', '開設中', '閉鎖'] %}
+        <option value="{{ item }}"{% if (form_data.opening_status if form_data else (shelter.opening_status if shelter else '未開設')) == item %} selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
     </div>
 
     <div class="form-group">
       <label for="capacity">収容可能人数</label><br>
-      <input type="number" id="capacity" name="capacity" placeholder="例: 500" min="0">
+      <input type="number" id="capacity" name="capacity" value="{{ form_data.capacity if form_data else (shelter.capacity if shelter else '') }}" placeholder="例: 500" min="0" required>
+    </div>
+
+    <div class="form-group">
+      <label for="evacuee_count">現在の避難者数</label><br>
+      <input type="number" id="evacuee_count" name="evacuee_count" value="{{ form_data.evacuee_count if form_data else (shelter.evacuee_count if shelter else 0) }}" min="0">
+    </div>
+
+    <div class="form-group">
+      <label for="damage_status">被害状況</label><br>
+      <select id="damage_status" name="damage_status">
+        {% for status in ['未確認', '被害なし', '一部被害', '大きな被害', '使用不可'] %}
+        <option value="{{ status }}"{% if (form_data.damage_status if form_data else (shelter.damage_status if shelter else '未確認')) == status %} selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="status">公開状態</label><br>
+      <select id="status" name="status">
+        {% for item in [('active', '公開'), ('draft', '下書き'), ('inactive', '解除')] %}
+        <option value="{{ item[0] }}"{% if (form_data.status if form_data else (shelter.status if shelter else 'active')) == item[0] %} selected{% endif %}>{{ item[1] }}</option>
+        {% endfor %}
+      </select>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">🚀 登録</button>
+      <button type="submit" name="action" value="save" class="btn btn-primary">🚀 {% if shelter %}更新{% else %}登録{% endif %}</button>
+      <button type="submit" name="action" value="draft" class="btn btn-draft">一時保存</button>
       <a href="/" class="btn btn-secondary">戻る</a>
     </div>
   </form>
 
   <style>
     .register-container {
-      max-width: 600px;
+      max-width: 820px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -100,7 +171,8 @@
       font-weight: bold;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group select {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
@@ -110,10 +182,51 @@
       transition: border-color 0.3s ease;
     }
 
+    .register-map {
+      height: 260px;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .geocode-status {
+      min-height: 18px;
+      margin: 5px 0 0;
+      color: #666;
+      font-size: 13px;
+    }
+
     .form-group input:focus {
       outline: none;
       border-color: #667eea;
       box-shadow: 0 0 4px rgba(102, 126, 234, 0.3);
+    }
+
+    .form-group select {
+      min-height: 40px;
+    }
+
+    .check-label {
+      display: inline-block !important;
+      margin: 0 12px 8px 0;
+      font-weight: 400 !important;
+    }
+
+    .btn-draft {
+      background-color: #f39c12;
+      color: white;
+    }
+
+    .coordinate-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .coordinate-fields {
+        grid-template-columns: 1fr;
+      }
     }
 
     .form-actions {
@@ -159,4 +272,66 @@
       box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
     }
   </style>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const map = L.map('registerMap').setView([40.8269, 140.7444], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  const locationInput = document.getElementById('location');
+  const addressInput = document.getElementById('address');
+  const latitudeInput = document.getElementById('lat');
+  const longitudeInput = document.getElementById('lng');
+  const status = document.getElementById('geocodeStatus');
+  let marker = null;
+  let timer = null;
+  let requestNumber = 0;
+
+  function showPoint(latitude, longitude) {
+    map.setView([latitude, longitude], 16);
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([latitude, longitude]).addTo(map);
+    latitudeInput.value = latitude.toFixed(6);
+    longitudeInput.value = longitude.toFixed(6);
+  }
+
+  function searchLocation() {
+    const query = (locationInput.value || addressInput.value).trim();
+    if (query.length < 3) {
+      status.textContent = query ? '住所を3文字以上入力してください' : '';
+      return;
+    }
+    const currentRequest = ++requestNumber;
+    status.textContent = '住所を検索しています...';
+    fetch(`/api/geocode?address=${encodeURIComponent(query)}`)
+      .then(response => response.ok ? response.json() : null)
+      .then(coordinates => {
+        if (currentRequest !== requestNumber) return;
+        if (!coordinates) {
+          status.textContent = '住所が見つかりませんでした';
+          return;
+        }
+        showPoint(coordinates.lat, coordinates.lng);
+        status.textContent = '地図に位置を表示しました';
+      })
+      .catch(() => {
+        if (currentRequest === requestNumber) status.textContent = '住所検索に失敗しました';
+      });
+  }
+
+  locationInput.addEventListener('input', function() {
+    clearTimeout(timer);
+    timer = setTimeout(searchLocation, 800);
+  });
+  if (latitudeInput.value && longitudeInput.value) {
+    showPoint(Number(latitudeInput.value), Number(longitudeInput.value));
+  } else if (locationInput.value || addressInput.value) {
+    searchLocation();
+  }
+});
+</script>
 {% endblock %}

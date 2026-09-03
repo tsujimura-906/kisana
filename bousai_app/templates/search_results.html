@@ -1,20 +1,196 @@
 {% extends "base.html" %}
 
-{% block content %}
-<h2>検索結果</h2>
+{% block title %}避難所検索結果 - 防災アプリ{% endblock %}
 
-{% if results %}
-  <ul>
+{% block content %}
+<style>
+    .results-container { max-width: 1280px; margin: 0 auto; }
+  #resultsMap { width: 100%; height: 420px; margin: 20px 0; border: 1px solid #dfe3e8; border-radius: 8px; }
+  .location-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 16px; background: #f5f7fa; border-radius: 8px; }
+  .location-tools label { display: grid; gap: 5px; font-weight: 600; }
+  .location-tools input, .location-tools button { padding: 9px; border: 1px solid #c8cdd3; border-radius: 4px; }
+  .location-tools button { background: #1677c8; color: white; cursor: pointer; font-weight: 600; }
+  .location-status { color: #666; font-size: 13px; }
+  .results-list { display: grid; gap: 14px; padding: 0; list-style: none; }
+  .result-card { padding: 18px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; }
+  .result-card h3 { margin: 0 0 8px; }
+  .result-card p { margin: 5px 0; color: #555; }
+  .damage-status { color: #a50e0e; font-weight: 700; }
+  .route-link { display: inline-block; margin-top: 10px; padding: 8px 12px; border-radius: 4px; background: #27ae60; color: white; text-decoration: none; font-weight: 600; }
+    .admin-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .admin-actions a, .admin-actions button { padding: 8px 12px; border: 0; border-radius: 4px; color: white; text-decoration: none; cursor: pointer; font-weight: 600; }
+    .admin-actions a { background: #667eea; }
+    .admin-actions button { background: #c62828; }
+  @media (max-width: 600px) { .location-tools { align-items: stretch; flex-direction: column; } .location-tools input, .location-tools button { width: 100%; } }
+</style>
+
+<div class="results-container">
+  <h2>避難所検索結果</h2>
+    {% if message %}<p class="location-status">{{ message }}</p>{% endif %}
+  <p>{{ results|length }}件の避難所が見つかりました。</p>
+
+  <div class="location-tools">
+    <label for="latitude">現在地の緯度
+      <input type="number" id="latitude" step="any" min="-90" max="90" placeholder="40.824000">
+    </label>
+    <label for="longitude">現在地の経度
+      <input type="number" id="longitude" step="any" min="-180" max="180" placeholder="140.740000">
+    </label>
+    <button type="button" id="locateButton">📍 現在地を取得</button>
+    <span id="locationStatus" class="location-status">現在地は未取得です</span>
+  </div>
+
+  <div id="resultsMap"></div>
+
+  {% if results %}
+  <ul id="resultsList" class="results-list">
     {% for shelter in results %}
-    <li>{{ shelter.name }}</li>
+    <li class="result-card" data-shelter='{{ shelter|tojson|forceescape }}'>
+      <h3>{{ shelter.name|default('避難所名未登録') }}</h3>
+      <p>設備: {{ shelter.facilities|default({})|join(', ') or '未登録' }}</p>
+      <p>所在地: {{ shelter.location|default(shelter.address, true) or '所在地未登録' }}</p>
+      {% if shelter.district %}<p>地区名: {{ shelter.district }}</p>{% endif %}
+      <p class="damage-status">被害状況: {{ shelter.damage_status|default('未確認', true) }}</p>
+      <p>現在の避難者数: {{ shelter.evacuee_count|default(0, true) }}人</p>
+      {% if shelter.capacity is defined and shelter.capacity|int > 0 %}<p>収容人数: {{ shelter.capacity }}人</p>{% endif %}
+    <p>開設状況: {{ shelter.opening_status|default('未開設', true) }}</p>
+      <p class="distance" data-distance>現在地からの距離: 未計算</p>
+      <a class="route-link" data-route-link href="#">徒歩ルートを確認</a>
+            {% if session.logged_in %}
+            <div class="admin-actions">
+                <a href="/shelter_register?shelter_id={{ shelter.id }}">編集</a>
+                <form method="post" action="/shelter_delete/{{ shelter.id }}" onsubmit="return confirm('この避難所を削除しますか？');">
+                    <button type="submit">削除</button>
+                </form>
+            </div>
+            {% endif %}
+    </li>
     {% endfor %}
   </ul>
-{% else %}
+  {% else %}
   <p>該当する避難所が見つかりませんでした</p>
-{% endif %}
+  {% endif %}
 
-<p>
-  <a href="/shelter_search">検索画面に戻る</a> |
-  <a href="/">トップページへ戻る</a>
-</p>
+  <p><a href="/shelter_search">検索画面に戻る</a> | <a href="/">トップページへ戻る</a></p>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const defaultLocation = [40.8269, 140.7444];
+    const map = L.map('resultsMap').setView(defaultLocation, 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    const shelters = Array.from(document.querySelectorAll('[data-shelter]')).map(card => ({
+        card,
+        data: JSON.parse(card.dataset.shelter)
+    }));
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+    const status = document.getElementById('locationStatus');
+    let currentLayer = null;
+    let currentPosition = null;
+
+    function validCoordinates(latitude, longitude) {
+        return Number.isFinite(latitude) && Number.isFinite(longitude)
+            && latitude >= -90 && latitude <= 90
+            && longitude >= -180 && longitude <= 180;
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>'"]/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        })[character]);
+    }
+
+    function distanceInMeters(from, to) {
+        const radius = 6371000;
+        const lat1 = from[0] * Math.PI / 180;
+        const lat2 = to[0] * Math.PI / 180;
+        const deltaLat = (to[0] - from[0]) * Math.PI / 180;
+        const deltaLng = (to[1] - from[1]) * Math.PI / 180;
+        const value = Math.sin(deltaLat / 2) ** 2
+            + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+        return 2 * radius * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+    }
+
+    function formatDistance(meters) {
+        return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
+    }
+
+    function updateRouteLink(card, latitude, longitude, destination) {
+        const link = card.querySelector('[data-route-link]');
+        const origin = currentPosition ? `${currentPosition[0]},${currentPosition[1]}` : '';
+        const target = validCoordinates(latitude, longitude) ? `${latitude},${longitude}` : destination;
+        link.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(target)}&travelmode=walking`;
+        if (!currentPosition) link.textContent = '現在地を取得して徒歩ルートを確認';
+    }
+
+    function updateCurrentLocation(latitude, longitude) {
+        currentPosition = [latitude, longitude];
+        latitudeInput.value = latitude.toFixed(6);
+        longitudeInput.value = longitude.toFixed(6);
+        map.setView(currentPosition, 14);
+        if (currentLayer) map.removeLayer(currentLayer);
+        currentLayer = L.marker(currentPosition).addTo(map).bindPopup('現在地');
+        status.textContent = '現在地を表示しています';
+        shelters.forEach(item => {
+            const itemLatitude = Number(item.data.lat);
+            const itemLongitude = Number(item.data.lng);
+            item.card.querySelector('[data-distance]').textContent = validCoordinates(itemLatitude, itemLongitude)
+                ? `現在地からの距離: ${formatDistance(distanceInMeters(currentPosition, [itemLatitude, itemLongitude]))}`
+                : '現在地からの距離: 未計算（座標未登録）';
+            updateRouteLink(item.card, itemLatitude, itemLongitude, item.data.location || item.data.address || '');
+        });
+    }
+
+    function addShelterMarker(item, latitude, longitude) {
+        if (!validCoordinates(latitude, longitude)) return;
+        L.marker([latitude, longitude]).addTo(map).bindPopup(
+            `<b>${escapeHtml(item.data.name || '避難所名未登録')}</b><br>${escapeHtml(item.data.location || item.data.address || '所在地未登録')}`
+        );
+        updateRouteLink(item.card, latitude, longitude, item.data.location || item.data.address || '');
+    }
+
+    shelters.forEach(item => {
+        const latitude = Number(item.data.lat);
+        const longitude = Number(item.data.lng);
+        if (validCoordinates(latitude, longitude)) {
+            addShelterMarker(item, latitude, longitude);
+        } else if (item.data.location || item.data.address) {
+            fetch(`/api/geocode?address=${encodeURIComponent(item.data.location || item.data.address)}`)
+                .then(response => response.ok ? response.json() : null)
+                .then(coordinates => {
+                    if (coordinates) addShelterMarker(item, coordinates.lat, coordinates.lng);
+                })
+                .catch(() => {});
+        }
+    });
+
+    document.getElementById('locateButton').addEventListener('click', function() {
+        if (!navigator.geolocation) {
+            status.textContent = 'このブラウザは位置情報に対応していません';
+            return;
+        }
+        status.textContent = '現在地を取得しています...';
+        navigator.geolocation.getCurrentPosition(
+            position => updateCurrentLocation(position.coords.latitude, position.coords.longitude),
+            () => { status.textContent = '位置情報を許可してください（HTTPSまたはlocalhostが必要です）'; },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+        );
+    });
+    latitudeInput.addEventListener('change', function() {
+        const latitude = Number(latitudeInput.value);
+        const longitude = Number(longitudeInput.value);
+        if (validCoordinates(latitude, longitude)) updateCurrentLocation(latitude, longitude);
+    });
+    longitudeInput.addEventListener('change', function() {
+        const latitude = Number(latitudeInput.value);
+        const longitude = Number(longitudeInput.value);
+        if (validCoordinates(latitude, longitude)) updateCurrentLocation(latitude, longitude);
+    });
+});
+</script>
 {% endblock %}

@@ -2,8 +2,10 @@ from flask import Flask, jsonify, request, render_template, session, redirect, u
 from urllib.parse import urlparse, urljoin
 from functools import wraps
 import json
+import math
 import os
 import urllib.request
+from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 
 # app.py はプロジェクト直下に置く。
@@ -81,7 +83,9 @@ WARNING_CODES = {
 # ────────────────────────────────
 # サンプルデータの読み込み
 DATA_FILE = os.path.join(APP_DIR, 'data', 'shelters.json')
+DRAFT_FILE = os.path.join(APP_DIR, 'data', 'shelter_draft.json')
 INSTRUCTIONS_FILE = os.path.join(APP_DIR, 'data', 'instructions.json')
+SAFETY_FILE = os.path.join(APP_DIR, 'data', 'family_safety.json')
 
 def load_json(path, default):
     """JSONファイルを読み込む（存在しない・壊れている場合は default を返す）"""
@@ -93,14 +97,30 @@ def load_json(path, default):
 
 shelters = load_json(DATA_FILE, [])
 instructions = load_json(INSTRUCTIONS_FILE, [])
+family_safety = load_json(SAFETY_FILE, [])
+shelter_draft = load_json(DRAFT_FILE, {})
+
+SUPPORTED_DISASTERS = {'地震', '洪水', '土砂災害', '津波', '高潮', '火災'}
+FACILITIES = {'トイレ', 'Wi-Fi', '飲料水', '非常食', 'AED', '多目的トイレ', '車椅子対応', '英語対応'}
+OPENING_STATUSES = {'未開設', '開設中', '閉鎖'}
+
+def save_family_safety():
+    """家族の安否確認データをファイルに保存する"""
+    try:
+        with open(SAFETY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(family_safety, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
 
 def save_instructions():
     """指示ボードのデータをファイルに保存する"""
     try:
         with open(INSTRUCTIONS_FILE, 'w', encoding='utf-8') as f:
             json.dump(instructions, f, ensure_ascii=False, indent=2)
+        return True
     except Exception:
-        pass
+        return False
 
 def save_shelters():
     """避難所データをファイルに保存する"""
@@ -110,6 +130,38 @@ def save_shelters():
         return True
     except Exception:
         return False
+
+def save_shelter_draft():
+    try:
+        with open(DRAFT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(shelter_draft, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception:
+        return False
+
+def parse_nonnegative_int(value, default=0):
+    """値を0以上の整数に変換する"""
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return default
+
+def parse_coordinate(value, minimum, maximum):
+    """緯度・経度を範囲検証して返す"""
+    try:
+        coordinate = float(value)
+        if minimum <= coordinate <= maximum:
+            return coordinate
+    except (TypeError, ValueError):
+        pass
+    return None
+
+def has_facility(shelter, facility):
+    """旧辞書形式と新配列形式の設備を共通判定する"""
+    facilities = shelter.get('facilities', {})
+    if isinstance(facilities, dict):
+        return bool(facilities.get(facility))
+    return facility in facilities
 # ────────────────────────────────
 
 # ────────────────────────────────
@@ -150,7 +202,11 @@ def format_report_time(iso_str):
 
 def filter_shelters(district=None):
     """district 指定があれば一致する避難所のみ、なければ全件を返す"""
-    return [s for s in shelters if not district or s.get('district') == district]
+    return [
+        s for s in shelters
+        if s.get('status', 'active') == 'active'
+        and (not district or s.get('district') == district)
+    ]
 
 
 def parse_area_warnings(warning_data):
@@ -295,65 +351,256 @@ def shelter_register():
         name = request.form.get('name', '').strip()
         address = request.form.get('address', '').strip()
         phone = request.form.get('phone', '').strip()
+        district = request.form.get('district', '').strip()
         capacity = request.form.get('capacity', '').strip()
-        
-        # 必須項目のチェック
-        if not name:
-            return render_template('shelter_register.html', 
-                                 error=True, 
-                                 message="避難所名を入力してください")
-        
-        # 新しい避難所IDを生成（既存IDの最大値 + 1）
-        max_id = max([s.get('id', 0) for s in shelters], default=0)
-        new_id = max_id + 1
-        
-        # 新しい避難所データを作成
-        new_shelter = {
-            'id': new_id,
-            'name': name,
-            'address': address if address else '',
-            'phone': phone if phone else '',
-            'capacity': capacity if capacity else ''
+        location = request.form.get('location', '').strip()
+        status = request.form.get('status', '').strip() or 'active'
+        if status not in {'active', 'draft', 'inactive'}:
+            status = 'active'
+        damage_status = request.form.get('damage_status', '').strip() or '未確認'
+        evacuee_count = request.form.get('evacuee_count', '').strip()
+        action = request.form.get('action', 'save')
+        supported_disasters = [item for item in request.form.getlist('supported_disasters') if item in SUPPORTED_DISASTERS]
+        facilities = [item for item in request.form.getlist('facilities') if item in FACILITIES]
+        opening_status = request.form.get('opening_status', '').strip()
+        shelter_id = request.form.get('shelter_id', '').strip()
+
+        form_data = {
+            'name': name, 'address': address, 'phone': phone, 'district': district, 'capacity': capacity,
+            'location': location, 'status': status, 'damage_status': damage_status,
+            'evacuee_count': evacuee_count, 'lat': request.form.get('lat', '').strip(),
+            'lng': request.form.get('lng', '').strip(), 'shelter_id': shelter_id,
+            'supported_disasters': supported_disasters, 'facilities': facilities,
+            'opening_status': opening_status
         }
+        if action == 'draft':
+            shelter_draft.clear()
+            shelter_draft.update(form_data)
+            message = '入力内容を一時保存しました。'
+            if save_shelter_draft():
+                return render_template('shelter_register.html', success=True, message=message, form_data=form_data)
+            return render_template('shelter_register.html', error=True, message='一時保存に失敗しました。', form_data=form_data)
+        latitude = parse_coordinate(request.form.get('lat', '').strip(), -90, 90)
+        longitude = parse_coordinate(request.form.get('lng', '').strip(), -180, 180)
         
-        # シェルターリストに追加
-        shelters.append(new_shelter)
+        if not name:
+            return render_template('shelter_register.html', error=True, message='避難所名を入力してください。', form_data=form_data)
+        if not address:
+            return render_template('shelter_register.html', error=True, message='住所を入力してください。', form_data=form_data)
+        if not phone:
+            return render_template('shelter_register.html', error=True, message='電話番号を入力してください。', form_data=form_data)
+        if not capacity or not capacity.isdigit():
+            return render_template('shelter_register.html', error=True, message='収容人数は0以上の整数で入力してください。', form_data=form_data)
+        if opening_status not in OPENING_STATUSES:
+            return render_template('shelter_register.html', error=True, message='開設状況を選択してください。', form_data=form_data)
+        
+        existing = next((s for s in shelters if str(s.get('id')) == shelter_id), None)
+        if existing:
+            existing.update({
+                'name': name,
+                'location': location or existing.get('location', existing.get('address', '')),
+                'address': address or existing.get('address', ''),
+                'district': district or existing.get('district', ''),
+                'phone': phone or existing.get('phone', ''),
+                'status': status,
+                'damage_status': damage_status,
+                'evacuee_count': parse_nonnegative_int(evacuee_count, existing.get('evacuee_count', 0)),
+                'capacity': parse_nonnegative_int(capacity, existing.get('capacity', 0)),
+                'supported_disasters': supported_disasters,
+                'opening_status': opening_status,
+                'facilities': facilities
+            })
+            if latitude is not None:
+                existing['lat'] = latitude
+            if longitude is not None:
+                existing['lng'] = longitude
+        else:
+            max_id = max([s.get('id', 0) for s in shelters], default=0)
+            new_shelter = {
+                'id': max_id + 1,
+                'name': name,
+                'status': status,
+                'location': location or address,
+                'address': address,
+                'district': district,
+                'phone': phone,
+                'damage_status': damage_status,
+                'evacuee_count': parse_nonnegative_int(evacuee_count),
+                'capacity': parse_nonnegative_int(capacity),
+                'supported_disasters': supported_disasters,
+                'opening_status': opening_status,
+                'facilities': facilities
+            }
+            if latitude is not None and longitude is not None:
+                new_shelter.update({'lat': latitude, 'lng': longitude})
+            shelters.append(new_shelter)
         
         # ファイルに保存
         if save_shelters():
-            return render_template('shelter_register.html', 
-                                 success=True, 
-                                 message="登録完了しました！")
+            shelter_draft.clear()
+            save_shelter_draft()
+            return redirect(url_for('all_shelters', message='登録完了しました。'))
         else:
             return render_template('shelter_register.html', 
                                  error=True, 
                                  message="登録に失敗しました。もう一度試してください。")
     
-    return render_template('shelter_register.html')
+    edit_id = request.args.get('shelter_id')
+    edit_shelter = next(
+        (s for s in shelters if str(s.get('id')) == edit_id), None
+    ) if edit_id else None
+    if edit_id and edit_shelter is None:
+        return '避難所が見つかりません', 404
+    return render_template(
+        'shelter_register.html',
+        shelter=edit_shelter,
+        form_data=shelter_draft if not edit_shelter else {}
+    )
 
 # 避難所検索ページ
 @app.route('/shelter_search')
 def shelter_search():
-    return render_template('shelter_search.html')
+    return render_template('shelter_search.html', shelters=shelters)
+
+# 家族の安否確認ページ
+@app.route('/safety_confirmation', methods=['GET', 'POST'])
+def safety_confirmation():
+    if request.method == 'POST':
+        member_id = request.form.get('member_id', '')
+        status = request.form.get('status', '')
+        allowed_statuses = {'無事', '避難中', '未確認'}
+
+        for member in family_safety:
+            if str(member.get('id')) == member_id and status in allowed_statuses:
+                member['status'] = status
+                save_family_safety()
+                break
+
+    return render_template('safety_confirmation.html', family_safety=family_safety)
 
 # 全施設一覧ページ
 @app.route('/all_shelters')
 def all_shelters():
-    return render_template('search_results.html', results=shelters)
+    visible_shelters = shelters if session.get('logged_in') else filter_shelters()
+    return render_template('search_results.html', results=visible_shelters, message=request.args.get('message'))
+
+@app.route('/shelter_delete/<int:shelter_id>', methods=['POST'])
+@login_required
+def shelter_delete(shelter_id):
+    index = next((i for i, shelter in enumerate(shelters) if shelter.get('id') == shelter_id), None)
+    if index is None:
+        return '避難所が見つかりません', 404
+    deleted = shelters.pop(index)
+    if not save_shelters():
+        shelters.insert(index, deleted)
+        return render_template('search_results.html', results=filter_shelters(), message='避難所の削除に失敗しました。'), 500
+    return redirect(url_for('all_shelters', message='避難所情報を削除しました。'))
 
 
 # 指示ボード：住民向けの指示を一覧で確認する
-@app.route('/board')
+BOARD_DISTRICTS = ['市内全域', '北地区', '南地区', '東地区', '西地区', '中央地区', '浪岡地区']
+
+def board_district(value):
+    return value if value in BOARD_DISTRICTS else '市内全域'
+
+@app.route('/board', methods=['GET', 'POST'])
 @login_required
 def board():
-    resident_instructions = [i for i in instructions if i.get('target') == '住民']
-    return render_template('board.html', instructions=resident_instructions)
+    if request.method == 'POST':
+        target = request.form.get('target', '')
+        districts = [board_district(item) for item in request.form.getlist('district')]
+        content = request.form.get('content', '').strip()
+        if target not in {'住民', '職員'}:
+            return render_template('board.html', error='発信対象を選択してください。', **board_context())
+        if not content:
+            return render_template('board.html', error='指示内容を入力してください。', **board_context())
+        district = next((item for item in districts if item != '市内全域'), '市内全域')
+        now = get_japan_time()
+        new_instruction = {
+            'id': max([item.get('id', 0) for item in instructions if isinstance(item.get('id', 0), int)], default=0) + 1,
+            'target': target,
+            'district': district,
+            'content': content,
+            'status': '発信中',
+            'shelter': '',
+            'created_at': now,
+            'updated_at': now
+        }
+        instructions.insert(0, new_instruction)
+        if save_instructions():
+            return redirect(url_for('board', message='指示を登録しました。'))
+        instructions.pop(0)
+        return render_template('board.html', error='指示の保存に失敗しました。', **board_context())
+
+    return render_template('board.html', message=request.args.get('message'), **board_context())
+
+def board_context():
+    selected = board_district(request.args.get('district'))
+    visible_instructions = sorted(
+        [item for item in instructions if selected == '市内全域' or board_district(item.get('district')) == selected],
+        key=lambda item: item.get('updated_at', item.get('created_at', '')),
+        reverse=True
+    )
+    reports = load_json(os.path.join(APP_DIR, 'data', 'notification_history.json'), [])
+    visible_reports = sorted(
+        [item for item in reports if selected == '市内全域' or board_district(item.get('district', item.get('area_name'))) == selected],
+        key=lambda item: item.get('timestamp', item.get('created_at', '')),
+        reverse=True
+    )
+    return {
+        'instructions': visible_instructions,
+        'reports': visible_reports,
+        'districts': BOARD_DISTRICTS,
+        'selected_district': selected
+    }
 
 # 検索結果ページ：templates/search_results.html を返す
 @app.route('/search_results')
 def search_results():
     results = filter_shelters(request.args.get('district'))
+    name = request.args.get('name', '').strip().lower()
+    location = request.args.get('location', '').strip().lower()
+    if name or location:
+        results = [
+            shelter for shelter in results
+            if (not name or name in str(shelter.get('name', '') or '').lower())
+            and (not location or location in str(shelter.get('location', shelter.get('address', '')) or '').lower())
+        ]
+    facilities = request.args.getlist('facility')
+    if facilities:
+        results = [
+            shelter for shelter in results
+            if all(has_facility(shelter, facility) for facility in facilities)
+        ]
     return render_template('search_results.html', results=results)
+
+@app.route('/api/geocode')
+def api_geocode():
+    """所在地を地図座標へ変換する（結果は保存しない）"""
+    address = request.args.get('address', '').strip()
+    if not address:
+        return jsonify({'error': '住所がありません'}), 400
+    try:
+        url = 'https://nominatim.openstreetmap.org/search?' + urlencode({
+            'q': address,
+            'format': 'jsonv2',
+            'limit': 1
+        })
+        request_obj = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'bousai-app-shelter-search/1.0'}
+        )
+        with urllib.request.urlopen(request_obj, timeout=5) as response:
+            candidates = json.loads(response.read())
+        if not candidates:
+            return jsonify({'error': '所在地を検索できませんでした'}), 404
+        latitude = parse_coordinate(candidates[0].get('lat'), -90, 90)
+        longitude = parse_coordinate(candidates[0].get('lon'), -180, 180)
+        if latitude is None or longitude is None:
+            return jsonify({'error': '有効な座標がありません'}), 404
+        return jsonify({'lat': latitude, 'lng': longitude})
+    except Exception:
+        return jsonify({'error': '所在地の検索に失敗しました'}), 502
 
 # JSON API：/shelters?district=地区名
 @app.route('/shelters', methods=['GET'])
@@ -372,6 +619,11 @@ def get_shelters():
 def api_weather_warnings():
     """気象警報・注意報をJSON形式で返すAPI"""
     return jsonify(get_weather_warnings())
+
+@app.route('/api/shelters')
+def api_shelters():
+    """避難所データをJSON形式で返すAPI"""
+    return jsonify(filter_shelters())
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

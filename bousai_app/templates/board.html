@@ -3,23 +3,120 @@
 {% block title %}指示・発信ボード - 防災アプリ{% endblock %}
 
 {% block content %}
-<h2>発信ボード</h2>
-<p>住民向けの発信を登録・確認できます。</p>
+<style>
+  .board-container { max-width: 1180px; margin: 0 auto; }
+  .district-form, .publish-form { padding: 18px; background: #f5f7fa; border: 1px solid #dfe3e8; border-radius: 8px; }
+  .district-options { display: flex; flex-wrap: wrap; gap: 10px; }
+  .district-option { padding: 8px 14px; background: white; border: 1px solid #c8cdd3; border-radius: 18px; cursor: pointer; }
+  .district-option:has(input:checked) { background: #1677c8; border-color: #1677c8; color: white; }
+  .district-option input { margin-right: 5px; }
+  .board-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 22px; }
+  .board-panel { min-width: 0; }
+  .board-panel h3 { margin-bottom: 10px; }
+  .scroll-list { height: 360px; overflow-y: scroll; padding: 0; margin: 0; list-style: none; background: white; border: 1px solid #dfe3e8; border-radius: 6px; }
+  .board-row { padding: 13px 15px; border-bottom: 1px solid #edf0f2; }
+  .board-row:last-child { border-bottom: 0; }
+  .board-meta { color: #667085; font-size: 12px; }
+  .board-content { margin-top: 5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .board-form { margin-top: 24px; }
+  .publish-form { display: grid; gap: 16px; }
+  .publish-form label { font-weight: 600; }
+  .target-options { display: flex; gap: 18px; margin-top: 8px; }
+  .publish-form textarea { min-height: 120px; resize: vertical; padding: 10px; border: 1px solid #c8cdd3; border-radius: 5px; font: inherit; }
+  .publish-button { width: fit-content; padding: 10px 18px; border: 0; border-radius: 5px; background: #1677c8; color: white; font-weight: 600; cursor: pointer; }
+  .notice { padding: 12px; margin: 14px 0; border-radius: 5px; background: #e8f5e9; color: #216e39; }
+  .error { padding: 12px; margin: 14px 0; border-radius: 5px; background: #ffebee; color: #a50e0e; }
+  @media (max-width: 700px) { .board-columns { grid-template-columns: 1fr; } .scroll-list { height: 300px; } }
+</style>
 
-<!-- 発信一覧 -->
-<h3>発信一覧</h3>
-{% if instructions %}
-<table border="1" cellpadding="5">
-  <tr>
-    <th>内容</th>
-  </tr>
-  {% for inst in instructions %}
-  <tr>
-    <td>{{ inst.content }}{% if inst.shelter %}（避難先: {{ inst.shelter }}）{% endif %}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p>登録されている指示はありません。</p>
-{% endif %}
+<div class="board-container">
+  <h2>発信ボード</h2>
+  <p>地区ごとの指示・発信と通報を確認できます。</p>
+  {% if message %}<p class="notice">{{ message }}</p>{% endif %}
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+  <form class="district-form" method="get" action="/board" id="filterForm">
+    <strong>地区フィルター</strong>
+    <div class="district-options">
+      {% for district in districts %}
+      <label class="district-option"><input type="checkbox" name="district" value="{{ district }}"{% if selected_district == district %} checked{% endif %}>{{ district }}</label>
+      {% endfor %}
+    </div>
+  </form>
+
+  <div class="board-columns">
+    <section class="board-panel">
+      <h3>発信一覧</h3>
+      <ul class="scroll-list">
+        {% for item in instructions %}
+        <li class="board-row">
+          <div class="board-meta">{{ item.updated_at|default(item.created_at, true) or '日時未登録' }} | {{ item.district|default('市内全域', true) }} | {{ item.target|default('対象未登録') }} | {{ item.status|default('発信中', true) }}</div>
+          <div class="board-content">{{ item.content }}{% if item.shelter %}（避難先: {{ item.shelter }}）{% endif %}</div>
+        </li>
+        {% else %}<li class="board-row">登録されている発信はありません。</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="board-panel">
+      <h3>通報一覧</h3>
+      <ul class="scroll-list">
+        {% for report in reports %}
+        <li class="board-row">
+          <div class="board-meta">{{ report.timestamp|default(report.created_at, true) or '日時未登録' }} | {{ report.district|default(report.area_name, true) or '市内全域' }} | {{ report.status|default('未確認', true) }}</div>
+          <div class="board-content">{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
+        </li>
+        {% else %}<li class="board-row">登録されている通報はありません。</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="board-form">
+    <h3>指示入力</h3>
+    <form class="publish-form" method="post" action="/board">
+      <div>
+        <label>発信対象</label>
+        <div class="target-options">
+          <label><input type="radio" name="target" value="住民" required> 住民向け</label>
+          <label><input type="radio" name="target" value="職員"> 職員向け</label>
+        </div>
+      </div>
+      <div>
+        <label>地区選択</label>
+        <div class="district-options board-district-group">
+          {% for district in districts %}
+          <label class="district-option"><input type="checkbox" name="district" value="{{ district }}"{% if district == '市内全域' %} checked{% endif %}>{{ district }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label for="content">指示内容</label>
+        <textarea id="content" name="content" required></textarea>
+      </div>
+      <button class="publish-button" type="submit">指示を登録</button>
+    </form>
+  </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.district-options').forEach(function(group) {
+    const checkboxes = Array.from(group.querySelectorAll('input[type="checkbox"]'));
+    const allDistrict = checkboxes.find(input => input.value === '市内全域');
+    function normalize(changed) {
+      if (changed && changed.value === '市内全域' && changed.checked) {
+        checkboxes.forEach(input => { if (input !== allDistrict) input.checked = false; });
+      } else if (changed && changed.value !== '市内全域' && changed.checked) {
+        allDistrict.checked = false;
+      }
+      if (!checkboxes.some(input => input.checked)) allDistrict.checked = true;
+    }
+    checkboxes.forEach(input => input.addEventListener('change', () => normalize(input)));
+    normalize();
+  });
+  const filterForm = document.getElementById('filterForm');
+  filterForm.querySelectorAll('input').forEach(input => input.addEventListener('change', function() {
+    filterForm.submit();
+  }));
+});
+</script>
 {% endblock %}
