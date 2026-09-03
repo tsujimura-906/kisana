@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}情報・注意事項 - 防災アプリ{% endblock %}
+
+{% block content %}
+<style>
+  .notices-container { max-width: 900px; margin: 0 auto; }
+  .notices-container h2 { margin-bottom: 8px; }
+  .notices-intro { color: #5f6368; }
+  .notice-list { display: grid; gap: 12px; margin-top: 24px; padding: 0; list-style: none; }
+  .notice-item { padding: 18px; border: 1px solid #dfe3e8; border-left: 5px solid #1677c8; border-radius: 6px; background: white; }
+  .notice-meta { color: #667085; font-size: 13px; }
+  .notice-content { margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
+  .notice-shelter { margin-top: 8px; color: #145b91; font-weight: 600; }
+  .empty-notices { margin-top: 24px; padding: 22px; border: 1px solid #dfe3e8; border-radius: 6px; background: white; color: #5f6368; }
+</style>
+
+<div class="notices-container">
+  <h2>情報・注意事項</h2>
+  <p class="notices-intro">発信ボードと同期した最新の情報を確認できます。</p>
+
+  {% if notices %}
+    <ul class="notice-list">
+      {% for notice in notices %}
+      <li class="notice-item">
+        <div class="notice-meta">{{ notice.updated_at|default(notice.created_at, true) or '日時未登録' }} | {{ notice.district|default('市内全域', true) }} | {{ notice.status|default('発信中', true) }}</div>
+        <div class="notice-content">{{ notice.content|default('発信内容未登録', true) }}</div>
+        {% if notice.shelter %}<div class="notice-shelter">避難先: {{ notice.shelter }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty-notices">現在、発信されている情報はありません。</p>
+  {% endif %}
+</div>
+{% endblock %}

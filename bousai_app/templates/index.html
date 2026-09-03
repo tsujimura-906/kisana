@@ -411,13 +411,11 @@
       <a href="/safety_confirmation" class="action-card-button">登録済み</a>
     </div>
 
-    {% if session.logged_in %}
-      <div class="action-card card-orange">
-        <h3 class="action-card-title">📢 情報・注意事項</h3>
-        <p class="action-card-desc">最新情報と取るべき行動をチェック</p>
-        <a href="/board" class="action-card-button">確認する</a>
-      </div>
-    {% endif %}
+    <div class="action-card card-orange">
+      <h3 class="action-card-title">📢 情報・注意事項</h3>
+      <p class="action-card-desc">最新情報と取るべき行動をチェック</p>
+      <a href="/notices" class="action-card-button">確認する</a>
+    </div>
   </div>
 
   <!-- 避難所マップセクション -->

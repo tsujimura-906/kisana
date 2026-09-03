@@ -47,7 +47,7 @@
     {% for shelter in results %}
     <li class="result-card" data-shelter='{{ shelter|tojson|forceescape }}'>
       <h3>{{ shelter.name|default('避難所名未登録') }}</h3>
-      <p>設備: {{ shelter.facilities|default({})|join(', ') or '未登録' }}</p>
+    <p>設備: {% if shelter.facilities is mapping %}{% set available_facilities = shelter.facilities.items()|selectattr('1')|map(attribute='0')|list %}{{ available_facilities|join('、') or '未登録' }}{% else %}{{ shelter.facilities|default([])|join('、') or '未登録' }}{% endif %}</p>
       <p>所在地: {{ shelter.location|default(shelter.address, true) or '所在地未登録' }}</p>
       {% if shelter.district %}<p>地区名: {{ shelter.district }}</p>{% endif %}
       <p class="damage-status">被害状況: {{ shelter.damage_status|default('未確認', true) }}</p>

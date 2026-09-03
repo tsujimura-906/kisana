@@ -31,8 +31,6 @@
     </div>
 
     <div class="form-group">
-      <label for="location">所在地</label><br>
-      <input type="text" id="location" name="location" value="{{ form_data.location if form_data else (shelter.location if shelter else '') }}" placeholder="例: 青森県青森市合浦1丁目">
       <p id="geocodeStatus" class="geocode-status"></p>
       <div id="registerMap" class="register-map"></div>
     </div>
@@ -63,7 +61,7 @@
 
     <div class="form-group">
       <label>施設設備</label><br>
-      {% for facility in ['トイレ', 'Wi-Fi', '飲料水', '非常食', 'AED', '多目的トイレ', '車椅子対応', '英語対応'] %}
+      {% for facility in ['トイレ', '多目的トイレ', '飲料水', '非常食', 'Wi-Fi', '充電設備・電源', 'AED', '救護スペース', '車椅子対応（バリアフリー）', '乳幼児・授乳スペース', 'ペット受入可', '外国語対応'] %}
       <label class="check-label"><input type="checkbox" name="facilities" value="{{ facility }}"{% if facility in (form_data.facilities if form_data else (shelter.facilities if shelter else [])) %} checked{% endif %}> {{ facility }}</label>
       {% endfor %}
     </div>
@@ -273,7 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
-  const locationInput = document.getElementById('location');
   const addressInput = document.getElementById('address');
   const latitudeInput = document.getElementById('lat');
   const longitudeInput = document.getElementById('lng');
@@ -291,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function searchLocation() {
-    const query = (addressInput.value || locationInput.value).trim();
+    const query = addressInput.value.trim();
     if (query.length < 3) {
       status.textContent = query ? '住所を3文字以上入力してください' : '';
       return;
@@ -319,11 +316,10 @@ document.addEventListener('DOMContentLoaded', function() {
     timer = setTimeout(searchLocation, 800);
   }
 
-  locationInput.addEventListener('input', scheduleSearch);
   addressInput.addEventListener('input', scheduleSearch);
   if (latitudeInput.value && longitudeInput.value) {
     showPoint(Number(latitudeInput.value), Number(longitudeInput.value));
-  } else if (locationInput.value || addressInput.value) {
+  } else if (addressInput.value) {
     searchLocation();
   }
 });

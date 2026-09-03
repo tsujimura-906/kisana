@@ -210,12 +210,9 @@
 		</div>
 
 		<div class="filter-options" aria-label="追加の絞り込み条件">
-			<label><input type="checkbox" name="filter" value="water"> 飲料水</label>
-			<label><input type="checkbox" name="filter" value="food"> 非常食</label>
-			<label><input type="checkbox" name="filter" value="wifi"> Wi-Fi</label>
-			<label><input type="checkbox" name="filter" value="aed"> AED</label>
-			<label><input type="checkbox" name="filter" value="wheelchair"> 車椅子対応</label>
-			<label><input type="checkbox" name="filter" value="language"> 言語対応</label>
+			{% for facility in ['トイレ', '多目的トイレ', '飲料水', '非常食', 'Wi-Fi', '充電設備・電源', 'AED', '救護スペース', '車椅子対応（バリアフリー）', '乳幼児・授乳スペース', 'ペット受入可', '外国語対応'] %}
+			<label><input type="checkbox" name="filter" value="{{ facility }}"> {{ facility }}</label>
+			{% endfor %}
 		</div>
 
 	</form>
@@ -273,7 +270,10 @@ document.addEventListener('DOMContentLoaded', function() {
 						const address = String(shelter.address || '').toLowerCase();
 						return (!nameQuery || name.includes(nameQuery))
 								&& (!addressQuery || address.includes(addressQuery))
-								&& selectedFilters.every(filter => Boolean(shelter[filter]));
+								&& selectedFilters.every(filter => {
+									const facilities = shelter.facilities || [];
+									return Array.isArray(facilities) ? facilities.includes(filter) : Boolean(facilities[filter]);
+								});
 				}).sort((left, right) => {
 						if (sortOrder.value === 'id') return Number(left.id) - Number(right.id);
 						return String(left.name || '').localeCompare(String(right.name || ''), 'ja');
@@ -286,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
 						<p>住所: ${escapeHtml(shelter.address || '未登録')}</p>
 						<p>電話番号: ${escapeHtml(shelter.phone || '未登録')}</p>
 						<p>収容可能人数: ${escapeHtml(shelter.capacity || '未登録')}</p>
+						<p>設備: ${escapeHtml(Array.isArray(shelter.facilities) ? shelter.facilities.join('、') : Object.keys(shelter.facilities || {}).join('、') || '未登録')}</p>
 					</li>
 				`).join('');
 				noResults.hidden = filteredShelters.length !== 0;

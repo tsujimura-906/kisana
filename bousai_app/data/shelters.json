@@ -1,72 +1,17 @@
 [
   {
     "id": 1,
-    "name": "御所見小学校",
+    "name": "住所のみの避難所",
     "status": "active",
-    "location": "",
+    "location": "青森市中央1丁目",
+    "address": "青森市中央1丁目",
     "district": "",
+    "phone": "017-000-0000",
     "damage_status": "未確認",
     "evacuee_count": 0,
-    "capacity": 0,
-    "facilities": {}
-  },
-  {
-    "id": 2,
-    "name": "片瀬小学校",
-    "status": "active",
-    "location": "",
-    "district": "",
-    "damage_status": "未確認",
-    "evacuee_count": 0,
-    "capacity": 0,
-    "facilities": {}
-  },
-  {
-    "id": 5,
-    "name": "鵠洋小学校",
-    "status": "active",
-    "location": "",
-    "district": "",
-    "damage_status": "未確認",
-    "evacuee_count": 0,
-    "capacity": 0,
-    "facilities": {}
-  },
-  {
-    "id": 6,
-    "name": "青森市民体育館",
-    "status": "active",
-    "address": "青森市合浦1丁目",
-    "location": "青森市合浦1丁目",
-    "district": "合浦",
-    "phone": "017-741-8835",
-    "capacity": "500",
-    "damage_status": "未確認",
-    "evacuee_count": 0,
-    "facilities": {},
-    "lat": 40.8269,
-    "lng": 140.7444
-  },
-  {
-    "id": 7,
-    "name": "ああ",
-    "status": "active",
-    "location": "っf",
-    "address": "ええ",
-    "district": "が",
-    "phone": "えげっっg",
-    "damage_status": "一部被害",
-    "evacuee_count": 2,
-    "capacity": 3301,
-    "supported_disasters": [
-      "高潮"
-    ],
+    "capacity": 50,
+    "supported_disasters": [],
     "opening_status": "開設中",
-    "facilities": [
-      "非常食"
-    ],
-    "lat": 2.0,
-    "lng": 3.0,
-    "photo_url": "/static/uploads/0d58f7331d2b4e60bed08a88f949dc84.png"
+    "facilities": []
   }
 ]

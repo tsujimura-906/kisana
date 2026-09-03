@@ -41,6 +41,15 @@
     font-size: 13px;
   }
 
+  .safety-member-phone {
+    display: inline-block;
+    margin-top: 8px;
+    color: #145b91;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
   .safety-form {
     display: flex;
     align-items: center;
@@ -63,6 +72,22 @@
     font-weight: 600;
   }
 
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .safety-form input[type="tel"] {
+    width: 145px;
+  }
+
   @media (max-width: 600px) {
     .safety-member {
       align-items: stretch;
@@ -74,8 +99,10 @@
     }
 
     .safety-form select,
-    .safety-form button {
+    .safety-form button,
+    .safety-form input[type="tel"] {
       flex: 1;
+      width: auto;
     }
   }
 </style>
@@ -91,9 +118,14 @@
         <div>
           <div class="safety-member-name">{{ member.name }}</div>
           <div class="safety-member-relation">{{ member.relation }}</div>
+          {% if member.phone %}<a class="safety-member-phone" href="tel:{{ member.phone|replace('-', '')|replace(' ', '') }}">📞 {{ member.phone }}</a>{% endif %}
         </div>
         <form class="safety-form" method="post">
           <input type="hidden" name="member_id" value="{{ member.id }}">
+          <label>
+            <span class="sr-only">{{ member.name }}の電話番号</span>
+            <input type="tel" name="phone" value="{{ member.phone|default('', true) }}" placeholder="電話番号">
+          </label>
           <select name="status" aria-label="{{ member.name }}の安否">
             {% for status in ['無事', '避難中', '未確認'] %}
             <option value="{{ status }}"{% if member.status == status %} selected{% endif %}>{{ status }}</option>

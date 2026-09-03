@@ -107,7 +107,11 @@ family_safety = load_json(SAFETY_FILE, [])
 shelter_draft = load_json(DRAFT_FILE, {})
 
 SUPPORTED_DISASTERS = {'地震', '洪水', '土砂災害', '津波', '高潮', '火災'}
-FACILITIES = {'トイレ', 'Wi-Fi', '飲料水', '非常食', 'AED', '多目的トイレ', '車椅子対応', '英語対応'}
+FACILITIES = {
+    'トイレ', '多目的トイレ', '飲料水', '非常食', 'Wi-Fi', '充電設備・電源',
+    'AED', '救護スペース', '車椅子対応（バリアフリー）', '乳幼児・授乳スペース',
+    'ペット受入可', '外国語対応'
+}
 OPENING_STATUSES = {'未開設', '開設中', '閉鎖'}
 
 def save_family_safety():
@@ -428,7 +432,6 @@ def shelter_register():
         phone = request.form.get('phone', '').strip()
         district = request.form.get('district', '').strip()
         capacity = request.form.get('capacity', '').strip()
-        location = request.form.get('location', '').strip()
         photo = request.files.get('photo')
         photo_url = save_shelter_photo(photo)
         if photo and photo.filename and photo_url is None:
@@ -445,7 +448,7 @@ def shelter_register():
 
         form_data = {
             'name': name, 'address': address, 'phone': phone, 'district': district, 'capacity': capacity,
-            'location': location, 'status': 'active', 'damage_status': damage_status,
+            'status': 'active', 'damage_status': damage_status,
             'evacuee_count': evacuee_count, 'shelter_id': shelter_id,
             'lat': request.form.get('lat', '').strip(), 'lng': request.form.get('lng', '').strip(),
             'supported_disasters': supported_disasters, 'facilities': facilities,
@@ -475,7 +478,7 @@ def shelter_register():
         if existing:
             existing.update({
                 'name': name,
-                'location': location or existing.get('location', existing.get('address', '')),
+                'location': address or existing.get('address', existing.get('location', '')),
                 'address': address or existing.get('address', ''),
                 'district': district or existing.get('district', ''),
                 'phone': phone or existing.get('phone', ''),
@@ -497,7 +500,7 @@ def shelter_register():
                 'id': max_id + 1,
                 'name': name,
                 'status': 'active',
-                'location': location or address,
+                'location': address,
                 'address': address,
                 'district': district,
                 'phone': phone,
@@ -548,11 +551,13 @@ def safety_confirmation():
     if request.method == 'POST':
         member_id = request.form.get('member_id', '')
         status = request.form.get('status', '')
+        phone = request.form.get('phone', '').strip()
         allowed_statuses = {'無事', '避難中', '未確認'}
 
         for member in family_safety:
             if str(member.get('id')) == member_id and status in allowed_statuses:
                 member['status'] = status
+                member['phone'] = phone
                 save_family_safety()
                 break
 
@@ -644,6 +649,15 @@ def board():
         return render_template('board.html', error='指示の保存に失敗しました。', **board_context())
 
     return render_template('board.html', message=request.args.get('message'), **board_context())
+
+@app.route('/notices')
+def notices():
+    visible_notices = sorted(
+        instructions,
+        key=lambda item: item.get('updated_at', item.get('created_at', '')),
+        reverse=True
+    )
+    return render_template('notices.html', notices=visible_notices)
 
 def board_context():
     selected = board_district(request.args.get('district'))
