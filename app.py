@@ -90,7 +90,7 @@ INSTRUCTIONS_FILE = os.path.join(APP_DIR, 'data', 'instructions.json')
 NOTIFICATION_FILE = os.path.join(APP_DIR, 'data', 'notification_history.json')
 SAFETY_FILE = os.path.join(APP_DIR, 'data', 'family_safety.json')
 UPLOAD_DIR = os.path.join(app.static_folder, 'uploads')
-ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'webm'}
 LIVE_CAMPUS_URL = 'https://livecampus.jp/'
 
 def load_json(path, default):
@@ -378,28 +378,35 @@ def logout():
 def report():
     if request.method == 'POST':
         district = request.form.get('district', '').strip() or '市内全域'
-        reporter_type = request.form.get('reporter_type', '').strip()
         occurred_at = request.form.get('occurred_at', '').strip()
-        damage_type = request.form.get('damage_type', '').strip()
+        reporter_type = request.form.get('reporter_type', '').strip()
+        damage_category = request.form.get('damage_category', '').strip()
         other_content = request.form.get('other_content', '').strip()
+        selections = {key: request.form.get(key, '').strip() for key in REPORT_OPTIONS}
         latitude = parse_coordinate(request.form.get('lat', '').strip(), -90, 90)
         longitude = parse_coordinate(request.form.get('lng', '').strip(), -180, 180)
         photo_url = save_shelter_photo(request.files.get('photo'))
-        form_data = {'district': district, 'reporter_type': reporter_type, 'occurred_at': occurred_at, 'damage_type': damage_type, 'other_content': other_content, 'lat': request.form.get('lat', '').strip(), 'lng': request.form.get('lng', '').strip()}
+        form_data = {'district': district, 'reporter_type': reporter_type, 'occurred_at': occurred_at, 'damage_category': damage_category, 'other_content': other_content, 'lat': request.form.get('lat', '').strip(), 'lng': request.form.get('lng', '').strip(), **selections}
         if reporter_type not in {'個人', '施設'}:
             return render_template('report.html', error='通報元を選択してください。', form_data=form_data)
         if not occurred_at:
             return render_template('report.html', error='発生時刻を選択してください。', form_data=form_data)
-        if damage_type not in {'火事', '建物倒壊', '道路通行止め', '人災', 'その他'}:
+        if damage_category not in {'人的被害', '建物被害', '道路・交通', '浸水', '土砂災害', '火災', 'ライフライン', 'その他'}:
             return render_template('report.html', error='被害内容を選択してください。', form_data=form_data)
-        if damage_type == 'その他' and not other_content:
+        if damage_category == 'その他' and not other_content:
             return render_template('report.html', error='その他の被害内容を入力してください。', form_data=form_data)
+        if any(not selections[key] or selections[key] not in option['scores'] for key, option in REPORT_OPTIONS.items()):
+            return render_template('report.html', error='被害状況をすべて選択してください。', form_data=form_data)
+        if latitude is None or longitude is None:
+            return render_template('report.html', error='現在地または被害場所を地図から選択してください。', form_data=form_data)
         if request.files.get('photo') and request.files['photo'].filename and photo_url is None:
             return render_template('report.html', error='写真は画像ファイル（jpg、png、gif、webp）を選択してください。', form_data=form_data)
 
         notifications = load_json(NOTIFICATION_FILE, [])
         now = get_japan_time()
-        content = f'通報元: {reporter_type} / 発生時刻: {occurred_at} / 被害内容: {other_content if damage_type == "その他" else damage_type}'
+        summary = other_content if damage_category == 'その他' else damage_category
+        content = f'通報元: {reporter_type} / 発生時刻: {occurred_at} / 被害内容: {summary}'
+        score, breakdown = calculate_report_score(selections)
         new_report = {
             'id': max([item.get('id', 0) for item in notifications if isinstance(item.get('id', 0), int)], default=0) + 1,
             'timestamp': now,
@@ -407,7 +414,12 @@ def report():
             'content': content,
             'reporter_type': reporter_type,
             'occurred_at': occurred_at,
-            'damage_type': damage_type,
+            'damage_category': damage_category,
+            'other_content': other_content,
+            **selections,
+            'damage_index': score,
+            'damage_level': report_level(score),
+            'score_breakdown': breakdown,
             'status': '未確認'
         }
         if latitude is not None and longitude is not None:
@@ -597,19 +609,19 @@ def board_district(value):
     return value if value in BOARD_DISTRICTS else '市内全域'
 
 def damage_index(report):
-    """通報内容から0.0〜10.0の被害指数を算出する"""
+    """通報内容から0〜100点の被害指数を算出する"""
     for key in ('damage_index', 'damage_scale', 'damage_level'):
         try:
-            return round(max(0.0, min(10.0, float(report.get(key)))), 1)
+            return round(max(0.0, min(100.0, float(report.get(key)))), 1)
         except (TypeError, ValueError):
             pass
 
     content = str(report.get('content', report.get('warnings', '')) or '')
     severity_scores = (
-        (('死者', '倒壊', '使用不可', '通行止め'), 9.0),
-        (('大きな被害', '浸水', '冠水', '土砂', '負傷'), 7.0),
-        (('倒木', '停電', 'あふれ', '水位が上昇'), 5.0),
-        (('被害', '危険', '注意'), 3.0),
+        (('死者', '倒壊', '使用不可', '通行止め'), 90.0),
+        (('大きな被害', '浸水', '冠水', '土砂', '負傷'), 70.0),
+        (('倒木', '停電', 'あふれ', '水位が上昇'), 50.0),
+        (('被害', '危険', '注意'), 30.0),
     )
     return max((score for words, score in severity_scores if any(word in content for word in words)), default=0.0)
 
@@ -620,6 +632,23 @@ def report_photo_url(report):
         if isinstance(value, str) and value:
             return value
     return None
+
+def report_media_is_video(url):
+    return bool(url and os.path.splitext(url.split('?', 1)[0])[1].lower() in {'.mp4', '.mov', '.webm'})
+
+REPORT_OPTIONS = {
+    'human_damage': {'label': '人的被害', 'scores': {'被害なし': 0, 'けが人あり': 10, '重傷者あり': 20, '自力で動けない人あり': 30, '閉じ込め・救助が必要': 40}},
+    'building_damage': {'label': '建物被害', 'scores': {'被害なし': 0, '一部損壊': 8, '大きな損壊': 15, '使用困難': 22, '倒壊': 30}},
+    'road_damage': {'label': '道路・交通', 'scores': {'問題なし': 0, '一部損傷': 5, '通行しにくい': 10, '車両通行不能': 15, '歩行者も通行不能': 20}},
+    'damage_scope': {'label': '被害範囲', 'scores': {'1世帯・1施設': 0, '数世帯': 3, '周辺一帯': 5, '地区の広い範囲': 8, '地区全体・複数地区': 10}}
+}
+
+def calculate_report_score(report):
+    breakdown = {key: option['scores'].get(report.get(key), 0) for key, option in REPORT_OPTIONS.items()}
+    return sum(breakdown.values()), breakdown
+
+def report_level(score):
+    return '甚大' if score >= 80 else '大' if score >= 60 else '中' if score >= 40 else '小' if score >= 20 else '軽微'
 
 @app.route('/board', methods=['GET', 'POST'])
 @login_required
@@ -675,6 +704,20 @@ def report_list():
     reports = [report_item for report_item in reports if report_item['_photo_url']]
     return render_template('report_list.html', reports=reports)
 
+@app.route('/report/<int:report_id>')
+@login_required
+def report_detail(report_id):
+    reports = load_json(NOTIFICATION_FILE, [])
+    report_item = next((item for item in reports if item.get('id') == report_id), None)
+    if report_item is None:
+        return '通報が見つかりません', 404
+    score, breakdown = calculate_report_score(report_item)
+    report_item['_damage_index'] = report_item.get('damage_index', score)
+    report_item['_damage_level'] = report_item.get('damage_level', report_level(report_item['_damage_index']))
+    report_item['_score_breakdown'] = report_item.get('score_breakdown', breakdown)
+    report_item['_photo_url'] = report_photo_url(report_item)
+    return render_template('report_detail.html', report=report_item, report_options=REPORT_OPTIONS)
+
 def board_context():
     selected = board_district(request.args.get('district'))
     visible_instructions = sorted(
@@ -690,6 +733,7 @@ def board_context():
     )
     for report in visible_reports:
         report['_damage_index'] = damage_index(report)
+        report['_damage_level'] = report.get('damage_level', report_level(report['_damage_index']))
         report['_photo_url'] = report_photo_url(report)
     return {
         'instructions': visible_instructions,

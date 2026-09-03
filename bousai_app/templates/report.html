@@ -1,130 +1,45 @@
 {% extends "base.html" %}
-
-{% block title %}通報フォーム - 防災アプリ{% endblock %}
-
+{% block title %}災害被害を通報 - 防災アプリ{% endblock %}
 {% block content %}
 <style>
   .report-container { max-width: 760px; margin: 0 auto; }
-  .report-form { display: grid; gap: 18px; padding: 22px; background: white; border: 1px solid #dfe3e8; border-radius: 8px; }
-  .report-form label { display: block; margin-bottom: 7px; font-weight: 600; }
-  .report-form input, .report-form select, .report-form textarea { width: 100%; padding: 10px; border: 1px solid #c8cdd3; border-radius: 5px; font: inherit; }
-  .report-form textarea { min-height: 100px; resize: vertical; }
-  .report-button { width: fit-content; padding: 10px 18px; border: 0; border-radius: 5px; background: #c62828; color: white; font-weight: 600; cursor: pointer; }
-  .notice { padding: 12px; margin: 14px 0; border-radius: 5px; background: #e8f5e9; color: #216e39; }
-  .error { padding: 12px; margin: 14px 0; border-radius: 5px; background: #ffebee; color: #a50e0e; }
-  .location-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  .location-button { padding: 9px 14px; border: 1px solid #1677c8; border-radius: 5px; background: #1677c8; color: white; cursor: pointer; font-weight: 600; }
-  .location-status { min-height: 20px; margin: 8px 0 0; color: #5f6368; font-size: 13px; }
-  .report-map { height: 280px; margin-top: 10px; border: 1px solid #dfe3e8; border-radius: 5px; }
-  .back-link { display: inline-block; margin-top: 16px; color: #145b91; }
+  .report-form { display: grid; gap: 20px; padding: 24px; background: #fff; border: 1px solid #dfe3e8; border-radius: 8px; }
+  .report-form label, .question-title { display: block; margin-bottom: 9px; font-weight: 700; }
+  .report-form select, .report-form textarea, .report-form input[type="datetime-local"] { width: 100%; padding: 12px; border: 1px solid #aab4bf; border-radius: 5px; font: inherit; }
+  .radio-options { display: grid; gap: 8px; }
+  .radio-option { display: flex !important; align-items: center; gap: 9px; margin: 0 !important; padding: 11px; border: 1px solid #dfe3e8; border-radius: 5px; font-weight: 500 !important; }
+  .radio-option input { width: auto !important; margin: 0; }
+  .report-map { height: 300px; margin-top: 10px; border: 1px solid #dfe3e8; border-radius: 5px; }
+  .location-status { min-height: 20px; color: #5f6368; font-size: 14px; }
+  .location-button, .report-button { padding: 14px 20px; border: 0; border-radius: 5px; color: #fff; font-weight: 700; cursor: pointer; }
+  .location-button { background: #1677c8; }
+  .report-button { width: 100%; background: #b71c1c; font-size: 20px; }
+  .report-help { color: #5f6368; font-size: 14px; }
+  .notice, .error { padding: 13px; margin: 14px 0; border-radius: 5px; }
+  .notice { background: #e8f5e9; color: #216e39; }
+  .error { background: #ffebee; color: #a50e0e; }
 </style>
-
 <div class="report-container">
-  <h2>通報フォーム</h2>
-  <p>項目を選択して、被害状況を通報してください。</p>
+  <h2>災害被害を通報</h2>
+  <p class="report-help">選択式で簡単に入力できます。場所は地図をクリックするか現在地を取得してください。</p>
   {% if success %}<p class="notice">{{ success }}</p>{% endif %}
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
-
   <form class="report-form" method="post" action="/report" enctype="multipart/form-data">
-    <div>
-      <label for="reporter_type">通報元</label>
-      <select id="reporter_type" name="reporter_type" required>
-        <option value="">選択してください</option>
-        {% for option in ['個人', '施設'] %}
-        <option value="{{ option }}"{% if form_data and form_data.reporter_type == option %} selected{% endif %}>{{ option }}からの通報</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div>
-      <label for="occurred_at">いつ</label>
-      <input type="datetime-local" id="occurred_at" name="occurred_at" value="{{ form_data.occurred_at if form_data else '' }}" required>
-    </div>
-
-    <div>
-      <label for="district">地区</label>
-      <select id="district" name="district">
-        {% for district in ['市内全域', '北地区', '南地区', '東地区', '西地区', '中央地区', '浪岡地区'] %}
-        <option value="{{ district }}"{% if form_data and form_data.district == district %} selected{% endif %}>{{ district }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div>
-      <label>場所（地図から選択）</label>
-      <div class="location-actions">
-        <button type="button" class="location-button" id="currentLocationButton">現在地を選択</button>
-      </div>
-      <p class="location-status" id="locationStatus">地図をクリックするか、現在地を選択してください。</p>
-      <div id="reportMap" class="report-map"></div>
-      <input type="hidden" id="lat" name="lat" value="{{ form_data.lat if form_data else '' }}">
-      <input type="hidden" id="lng" name="lng" value="{{ form_data.lng if form_data else '' }}">
-    </div>
-
-    <div>
-      <label for="damage_type">被害内容</label>
-      <select id="damage_type" name="damage_type" required>
-        <option value="">選択してください</option>
-        {% for option in ['火事', '建物倒壊', '道路通行止め', '人災', 'その他'] %}
-        <option value="{{ option }}"{% if form_data and form_data.damage_type == option %} selected{% endif %}>{{ option }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div id="otherContentGroup" hidden>
-      <label for="other_content">その他の被害内容</label>
-      <textarea id="other_content" name="other_content">{{ form_data.other_content if form_data else '' }}</textarea>
-    </div>
-
-    <div>
-      <label for="photo">写真（任意）</label>
-      <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/gif,image/webp">
-    </div>
-    <button class="report-button" type="submit">通報を送信</button>
+    <div><label for="reporter_type">通報元</label><select id="reporter_type" name="reporter_type" required><option value="">選択してください</option>{% for value in ['個人', '施設'] %}<option value="{{ value }}"{% if form_data and form_data.reporter_type == value %} selected{% endif %}>{{ value }}からの通報</option>{% endfor %}</select></div>
+    <div><label for="occurred_at">発生日時</label><input type="datetime-local" id="occurred_at" name="occurred_at" value="{{ form_data.occurred_at if form_data else '' }}" required></div>
+    <div><label for="district">地区</label><select id="district" name="district">{% for value in ['市内全域', '北地区', '南地区', '東地区', '西地区', '中央地区', '浪岡地区'] %}<option value="{{ value }}"{% if form_data and form_data.district == value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></div>
+    <div><div class="question-title">現在地・被害場所</div><button type="button" class="location-button" id="currentLocationButton">現在地を取得</button><p class="location-status" id="locationStatus">地図をクリックして場所を選択できます。</p><div id="reportMap" class="report-map"></div><input type="hidden" id="lat" name="lat" value="{{ form_data.lat if form_data else '' }}"><input type="hidden" id="lng" name="lng" value="{{ form_data.lng if form_data else '' }}"></div>
+    <div><div class="question-title">被害の種類</div><div class="radio-options">{% for value in ['人的被害', '建物被害', '道路・交通', '浸水', '土砂災害', '火災', 'ライフライン', 'その他'] %}<label class="radio-option"><input type="radio" name="damage_category" value="{{ value }}"{% if form_data and form_data.damage_category == value %} checked{% endif %} required>{{ value }}</label>{% endfor %}</div></div>
+    {% for key, option in [('human_damage', '人的被害の状況'), ('building_damage', '建物の被害状況'), ('road_damage', '道路の状況'), ('damage_scope', '被害範囲')] %}
+    <div><div class="question-title">{{ option }}</div><div class="radio-options">{% for value in {'human_damage': ['被害なし', 'けが人あり', '重傷者あり', '自力で動けない人あり', '閉じ込め・救助が必要'], 'building_damage': ['被害なし', '一部損壊', '大きな損壊', '使用困難', '倒壊'], 'road_damage': ['問題なし', '一部損傷', '通行しにくい', '車両通行不能', '歩行者も通行不能'], 'damage_scope': ['1世帯・1施設', '数世帯', '周辺一帯', '地区の広い範囲', '地区全体・複数地区']}[key] %}<label class="radio-option"><input type="radio" name="{{ key }}" value="{{ value }}"{% if form_data and form_data[key] == value %} checked{% endif %} required>{{ value }}</label>{% endfor %}</div></div>
+    {% endfor %}
+    <div id="otherContentGroup" hidden><label for="other_content">その他の被害内容</label><textarea id="other_content" name="other_content">{{ form_data.other_content if form_data else '' }}</textarea></div>
+    <div><label for="photo">現場写真・動画（任意）</label><input type="file" id="photo" name="photo" accept="image/*,video/*"></div>
+    <button class="report-button" type="submit">通報する</button>
   </form>
-  <a class="back-link" href="/">ホームへ戻る</a>
 </div>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const defaultLocation = [40.8269, 140.7444];
-  const map = L.map('reportMap').setView(defaultLocation, 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
-  const latitudeInput = document.getElementById('lat');
-  const longitudeInput = document.getElementById('lng');
-  const locationStatus = document.getElementById('locationStatus');
-  let marker = null;
-
-  function setLocation(latitude, longitude, message) {
-    latitudeInput.value = latitude.toFixed(6);
-    longitudeInput.value = longitude.toFixed(6);
-    map.setView([latitude, longitude], 16);
-    if (marker) map.removeLayer(marker);
-    marker = L.marker([latitude, longitude]).addTo(map);
-    locationStatus.textContent = message;
-  }
-
-  map.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, '地図上の場所を選択しました。'));
-  document.getElementById('currentLocationButton').addEventListener('click', function() {
-    if (!navigator.geolocation) {
-      locationStatus.textContent = 'このブラウザでは現在地を取得できません。地図をクリックしてください。';
-      return;
-    }
-    locationStatus.textContent = '現在地を取得しています...';
-    navigator.geolocation.getCurrentPosition(
-      position => setLocation(position.coords.latitude, position.coords.longitude, '現在地を選択しました。'),
-      () => { locationStatus.textContent = '現在地を取得できませんでした。地図をクリックしてください。'; }
-    );
-  });
-  if (latitudeInput.value && longitudeInput.value) setLocation(Number(latitudeInput.value), Number(longitudeInput.value), '保存済みの場所を表示しています。');
-
-  const damageType = document.getElementById('damage_type');
-  const otherGroup = document.getElementById('otherContentGroup');
-  function toggleOther() { otherGroup.hidden = damageType.value !== 'その他'; }
-  damageType.addEventListener('change', toggleOther);
-  toggleOther();
-});
+document.addEventListener('DOMContentLoaded', function() { const map = L.map('reportMap').setView([40.8269, 140.7444], 13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map); const lat = document.getElementById('lat'); const lng = document.getElementById('lng'); const status = document.getElementById('locationStatus'); let marker; function setLocation(a, o, message) { lat.value = a.toFixed(6); lng.value = o.toFixed(6); map.setView([a, o], 16); if (marker) map.removeLayer(marker); marker = L.marker([a, o]).addTo(map); status.textContent = message; } map.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, '被害場所を選択しました。')); document.getElementById('currentLocationButton').addEventListener('click', function() { if (!navigator.geolocation) { status.textContent = '現在地を取得できません。地図をクリックしてください。'; return; } status.textContent = '現在地を取得しています...'; navigator.geolocation.getCurrentPosition(p => setLocation(p.coords.latitude, p.coords.longitude, '現在地を選択しました。'), () => { status.textContent = '現在地を取得できません。地図をクリックしてください。'; }); }); const damage = document.getElementById('damage_category'); const other = document.getElementById('otherContentGroup'); function toggle() { other.hidden = damage.value !== 'その他'; } damage.addEventListener('change', toggle); toggle(); });
 </script>
 {% endblock %}

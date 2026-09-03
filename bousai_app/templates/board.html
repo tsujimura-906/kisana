@@ -21,8 +21,12 @@
   .damage-index { display: inline-block; margin-right: 8px; padding: 3px 7px; border-radius: 4px; font-weight: 700; }
   .damage-index-normal { background: #e8f1f8; color: #145b91; }
   .damage-index-warning { background: #fff0a8; color: #705500; }
+  .damage-index-medium { background: #ffd9a8; color: #8a4b00; }
+  .damage-index-large { background: #ffc7c2; color: #a50e0e; }
   .damage-index-danger { background: #ffd9d6; color: #a50e0e; }
   .report-photo-link { display: inline-block; margin-top: 8px; color: #145b91; font-weight: 600; }
+  .report-summary { padding: 14px 16px; margin-bottom: 10px; border: 1px solid #dfe3e8; border-radius: 6px; background: #fff; font-weight: 700; }
+  .report-link { display: block; color: inherit; text-decoration: none; }
   .live-campus-link { display: inline-block; margin-top: 10px; color: #145b91; font-weight: 600; }
   .board-form { margin-top: 24px; }
   .publish-form { display: grid; gap: 16px; }
@@ -66,13 +70,14 @@
 
     <section class="board-panel">
       <h3>通報一覧</h3>
+      <div class="report-summary">総通報件数: {{ reports|length }}件</div>
       <ul class="scroll-list">
         {% for report in reports %}
-        <li class="board-row">
+        <li class="board-row"><a class="report-link" href="/report/{{ report.id }}">
           <div class="board-meta">{{ report.timestamp|default(report.created_at, true) or '日時未登録' }} | {{ report.district|default(report.area_name, true) or '市内全域' }} | {{ report.status|default('未確認', true) }}</div>
-          <div class="board-content"><span class="damage-index {% if report._damage_index >= 8 %}damage-index-danger{% elif report._damage_index >= 5 %}damage-index-warning{% else %}damage-index-normal{% endif %}">被害指数: {{ '%.1f'|format(report._damage_index) }}</span>{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
-          {% if report._photo_url %}<a class="report-photo-link" href="{{ report._photo_url }}" target="_blank" rel="noopener noreferrer">📷 添付写真を見る</a>{% endif %}
-        </li>
+          <div class="board-content"><span class="damage-index {% if report._damage_index >= 80 %}damage-index-danger{% elif report._damage_index >= 60 %}damage-index-large{% elif report._damage_index >= 40 %}damage-index-medium{% elif report._damage_index >= 20 %}damage-index-warning{% else %}damage-index-normal{% endif %}">被害指数: {{ report._damage_index }}/100 {{ report._damage_level }}</span>{{ report.content|default(report.warnings|default('通報内容未登録', true), true) }}</div>
+          <div class="board-meta">写真: {% if report._photo_url %}あり{% else %}なし{% endif %} | 人的被害: {% if report.human_damage and report.human_damage != '被害なし' %}あり{% else %}なし{% endif %}</div>
+        </a></li>
         {% else %}<li class="board-row">登録されている通報はありません。</li>{% endfor %}
       </ul>
     </section>

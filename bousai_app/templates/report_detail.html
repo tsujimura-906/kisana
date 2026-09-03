@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}通報詳細 - 防災アプリ{% endblock %}
+{% block content %}
+<style>
+  .detail-container { max-width: 900px; margin: 0 auto; }
+  .detail-card { padding: 24px; background: white; border: 1px solid #dfe3e8; border-radius: 8px; }
+  .score { display: inline-block; padding: 10px 14px; border-radius: 5px; background: #8b0000; color: white; font-size: 22px; font-weight: 800; }
+  .level { margin-left: 10px; font-size: 20px; font-weight: 800; color: #8b0000; }
+  .detail-meta { margin: 18px 0; color: #667085; }
+  .detail-summary { padding: 16px; margin: 18px 0; background: #f5f7fa; border-left: 4px solid #1677c8; }
+  .breakdown { width: 100%; margin-top: 22px; border-collapse: collapse; }
+  .breakdown th, .breakdown td { padding: 12px; border-bottom: 1px solid #edf0f2; text-align: left; }
+  .breakdown th { background: #f5f7fa; }
+  .media { max-width: 100%; max-height: 360px; margin-top: 20px; border-radius: 6px; }
+  .detail-map { height: 280px; margin-top: 10px; border: 1px solid #dfe3e8; border-radius: 6px; }
+  .back { display: inline-block; margin-top: 18px; color: #145b91; }
+</style>
+<div class="detail-container">
+  <h2>通報詳細</h2>
+  <div class="detail-card">
+    <div><span class="score">被害指数 {{ report._damage_index }} / 100</span><span class="level">{{ report._damage_level }}</span></div>
+    <div class="detail-meta">通報時刻: {{ report.timestamp|default('未登録', true) }} | 通報元: {{ report.reporter_type|default('未登録', true) }} | 地区: {{ report.district|default('市内全域', true) }}</div>
+    <div class="detail-summary"><strong>被害概要</strong><br>{{ report.content|default('通報内容未登録', true) }}</div>
+    <p>人的被害: {{ report.human_damage|default('未登録', true) }}</p>
+    <p>建物: {{ report.building_damage|default('未登録', true) }}</p>
+    <p>道路・交通: {{ report.road_damage|default('未登録', true) }}</p>
+    <p>被害範囲: {{ report.damage_scope|default('未登録', true) }}</p>
+    <p>写真: {% if report._photo_url %}あり{% else %}なし{% endif %}</p>
+    {% if report.lat is defined and report.lng is defined %}<p>発生場所: 緯度 {{ report.lat }} / 経度 {{ report.lng }}</p><div id="detailMap" class="detail-map"></div>{% else %}<p>発生場所: 未選択</p>{% endif %}
+    {% if report._photo_url %}
+      {% if report._photo_url.endswith('.mp4') or report._photo_url.endswith('.mov') or report._photo_url.endswith('.webm') %}<video class="media" controls src="{{ report._photo_url }}"></video>{% else %}<img class="media" src="{{ report._photo_url }}" alt="通報写真">{% endif %}
+    {% endif %}
+    <h3>被害指数の内訳</h3>
+    <table class="breakdown"><thead><tr><th>項目</th><th>選択内容</th><th>点数</th></tr></thead><tbody>
+      {% for key, option in report_options.items() %}<tr><td>{{ option.label }}</td><td>{{ report[key]|default('未登録', true) }}</td><td>{{ report._score_breakdown[key] }}点 / {{ option.scores.values()|list|max }}点</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  <a class="back" href="/board">発信ボードへ戻る</a>
+</div>
+{% if report.lat is defined and report.lng is defined %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>document.addEventListener('DOMContentLoaded', function() { const position = [{{ report.lat }}, {{ report.lng }}]; const map = L.map('detailMap').setView(position, 15); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map); L.marker(position).addTo(map).bindPopup('通報場所').openPopup(); });</script>
+{% endif %}
+{% endblock %}

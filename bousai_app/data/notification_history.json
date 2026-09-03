@@ -1,5 +1,31 @@
 [
   {
+    "id": 11,
+    "timestamp": "2026年09月03日 17:33",
+    "district": "北地区",
+    "content": "通報元: 個人 / 発生時刻: 2026-09-03T17:33 / 被害内容: 人的被害",
+    "reporter_type": "個人",
+    "occurred_at": "2026-09-03T17:33",
+    "damage_category": "人的被害",
+    "other_content": "",
+    "human_damage": "自力で動けない人あり",
+    "building_damage": "大きな損壊",
+    "road_damage": "一部損傷",
+    "damage_scope": "数世帯",
+    "damage_index": 53,
+    "damage_level": "中",
+    "score_breakdown": {
+      "human_damage": 30,
+      "building_damage": 15,
+      "road_damage": 5,
+      "damage_scope": 3
+    },
+    "status": "未確認",
+    "lat": 40.82667,
+    "lng": 140.726795,
+    "photo_url": "/static/uploads/0c207fd560a14f0ebe8eb9a8e6d3dd54.png"
+  },
+  {
     "id": 10,
     "timestamp": "2026年09月03日 15:51",
     "district": "北地区",
