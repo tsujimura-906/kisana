@@ -3,12 +3,14 @@
     "id": 1,
     "name": "家族A",
     "relation": "家族",
+    "phone": "090-0000-0001",
     "status": "未確認"
   },
   {
     "id": 2,
     "name": "家族B",
     "relation": "家族",
-    "status": "未確認"
+    "phone": "090-0000-0002",
+    "status": "避難中"
   }
 ]

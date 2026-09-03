@@ -1,17 +1,62 @@
 [
   {
     "id": 1,
-    "name": "住所のみの避難所",
+    "name": "妃菜",
     "status": "active",
-    "location": "青森市中央1丁目",
-    "address": "青森市中央1丁目",
+    "location": "兵庫県神戸市西区学園西町8丁目-2-1",
+    "address": "兵庫県神戸市西区学園西町8丁目-2-1",
     "district": "",
     "phone": "017-000-0000",
     "damage_status": "未確認",
     "evacuee_count": 0,
     "capacity": 50,
-    "supported_disasters": [],
+    "supported_disasters": [
+      "洪水"
+    ],
     "opening_status": "開設中",
-    "facilities": []
+    "facilities": [
+      "外国語対応"
+    ],
+    "lat": 34.677659,
+    "lng": 135.05337
+  },
+  {
+    "id": 2,
+    "name": "三内丸山遺跡",
+    "status": "active",
+    "location": "青森県青森市三内丸山305",
+    "address": "青森県青森市三内丸山305",
+    "district": "",
+    "phone": "123345432111",
+    "damage_status": "一部被害",
+    "evacuee_count": 2,
+    "capacity": 500,
+    "supported_disasters": [
+      "地震"
+    ],
+    "opening_status": "開設中",
+    "facilities": [
+      "トイレ",
+      "多目的トイレ"
+    ],
+    "lat": 40.822283,
+    "lng": 140.747203
+  },
+  {
+    "id": 3,
+    "name": "青森市民病院",
+    "status": "active",
+    "location": "青森県青森市勝田１町目14-20",
+    "address": "青森県青森市勝田１町目14-20",
+    "district": "",
+    "phone": "087654323234",
+    "damage_status": "未確認",
+    "evacuee_count": 0,
+    "capacity": 10000,
+    "supported_disasters": [],
+    "opening_status": "未開設",
+    "facilities": [],
+    "lat": 40.61361,
+    "lng": 140.590293
   }
 ]
